@@ -56,7 +56,7 @@ $GLOBALS['APPLICATION'] = null;
 require $root.'/install/index.php';
 $module = new shef_toolsaiannounce();
 Check::same('MODULE_ID', $module->MODULE_ID, Constants::MODULE_ID);
-Check::same('версия 1.0.0', $module->MODULE_VERSION, '1.0.0');
+Check::same('версия из version.php', $module->MODULE_VERSION, '1.0.1');
 $module->InstallEvents();
 $handler = ['main', 'OnEpilog', Constants::MODULE_ID, $event['to']['class'], 'handle'];
 Check::same('InstallEvents регистрирует OnEpilog', \Bitrix\Main\EventManager::$registered, [$handler]);
