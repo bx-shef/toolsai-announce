@@ -159,10 +159,22 @@ class shef_toolsaiannounce
 		return is_array($list) ? $list : [];
 	}
 
-	/** Зарегистрировать подписки; повторная установка не плодит дублей. */
+	/**
+	 * Обработчик новинок shef.toolsai до 1.50.0: при установке этого модуля
+	 * снимается, иначе на старом shef.toolsai окно показывалось бы дважды.
+	 * Класс — в обоих написаниях: ядро сравнивает строку как есть.
+	 */
+	private const LEGACY_EPILOG = ['main', 'OnEpilog', 'shef.toolsai', 'Shef\\ToolsAi\\Announce\\Events', 'onEpilog'];
+
+	/** Зарегистрировать подписки; повторная установка не плодит дублей. Снять старый обработчик shef.toolsai. */
 	public function InstallEvents(): bool
 	{
 		$eventManager = EventManager::getInstance();
+		[$from, $event, $toModule, $class, $method] = self::LEGACY_EPILOG;
+		foreach([$class, '\\'.$class] as $legacyClass)
+		{
+			$eventManager->unRegisterEventHandler($from, $event, $toModule, $legacyClass, $method);
+		}
 		foreach($this->getEventsList() as $event)
 		{
 			$eventManager->unRegisterEventHandler(
