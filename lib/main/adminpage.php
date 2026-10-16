@@ -39,6 +39,7 @@ class AdminPage
 	 */
 	private const OWN_PATTERN = '#^<\?php require\((?:\$_SERVER\[\'DOCUMENT_ROOT\'\]\.)?\'[^\']*/shef\.toolsaiannounce/admin/list\.php\'\);\s*$#';
 
+	/** Полный путь заглушки в /bitrix/admin портала. */
 	public static function getTarget(string $documentRoot): string
 	{
 		return rtrim($documentRoot, '/').'/bitrix/admin/'.static::FILE;

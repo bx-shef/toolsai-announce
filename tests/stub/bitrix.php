@@ -272,6 +272,15 @@ namespace
 		/** Базовый класс установщика: тестам нужен только сам класс. */
 		class CModule {}
 	}
+
+	if(!function_exists('UnRegisterModule'))
+	{
+		/** Снятые модули — для проверки установщика. */
+		function UnRegisterModule(string $moduleId): void
+		{
+			$GLOBALS['UNREGISTERED_MODULES'][] = $moduleId;
+		}
+	}
 	if(!class_exists('CUserOptions'))
 	{
 		/** Личные настройки пользователей: категория → имя → пользователь → значение. */
@@ -288,6 +297,13 @@ namespace
 			public static function SetOption($category, $name, $value, $common = false, $userId = false): bool
 			{
 				static::$values[$category][$name][(int)$userId] = $value;
+
+				return true;
+			}
+
+			public static function DeleteOptionsByName($category, $name): bool
+			{
+				unset(static::$values[$category][$name]);
 
 				return true;
 			}

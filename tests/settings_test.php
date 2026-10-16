@@ -64,6 +64,16 @@ Check::same('InstallEvents регистрирует OnEpilog', \Bitrix\Main\Even
 $module->UnInstallEvents();
 Check::same('UnInstallEvents снимает (с «\\» и без)', \Bitrix\Main\EventManager::$unregistered, [$handler, ['main', 'OnEpilog', Constants::MODULE_ID, ltrim($event['to']['class'], '\\'), 'handle']]);
 
+Check::group('удаление');
+$GLOBALS['CACHE_MANAGER'] = new class { public function CleanAll(): void {} };
+\Bitrix\Main\Config\Option::set(Constants::MODULE_ID, Constants::OPTION_LIST, '[]');
+\CUserOptions::SetOption(Constants::MODULE_ID, Constants::SEEN_OPTION, ['a'], false, 5);
+$module->UnInstallDB(['savedata' => 'Y']);
+Check::same('savedata — настройки и отметки остаются', [\Bitrix\Main\Config\Option::get(Constants::MODULE_ID, Constants::OPTION_LIST), \CUserOptions::GetOption(Constants::MODULE_ID, Constants::SEEN_OPTION, [], 5)], ['[]', ['a']]);
+$module->UnInstallDB();
+Check::same('без savedata — удалены', [\Bitrix\Main\Config\Option::get(Constants::MODULE_ID, Constants::OPTION_LIST, 'нет'), \CUserOptions::GetOption(Constants::MODULE_ID, Constants::SEEN_OPTION, 'нет', 5)], ['нет', 'нет']);
+Check::same('модуль снят', $GLOBALS['UNREGISTERED_MODULES'], [Constants::MODULE_ID, Constants::MODULE_ID]);
+
 Check::group('контроллер');
 Check::same('defaultNamespace', $value('controllers')['defaultNamespace'], '\\Shef\\ToolsAiAnnounce\\Controller');
 Check::same('действие отметки', Constants::SEEN_ACTION, 'shef:toolsaiannounce.banner.seen');
