@@ -1,0 +1,48 @@
+<?php declare(strict_types=1);
+
+use Bitrix\Main\Localization\Loc;
+use Shef\Options\Main\Options;
+use Shef\ToolsAiAnnounce\Main\Constants;
+
+/**
+ * Опции для страницы настроек (страницу рисует options.php из shef.options).
+ *
+ * языковой файл lang/ru/options.php
+ *
+ * Tab(prefix)->Option(code) ~> код свойства: prefix_code. Вкладка ANNOUNCE и
+ * опция testusers дают ANNOUNCE_testusers — тот же код, что был в
+ * shef.toolsai: установщик переносит значение как есть. Список объявлений
+ * (ANNOUNCE_list, JSON) правится не здесь, а на своей странице — ссылка в
+ * первой строке вкладки.
+ */
+
+$response = ShOptionsConfig::getInstance(
+	moduleId: 'shef.toolsaiannounce'
+);
+if(!$response->isSuccess())
+{
+	return $response;
+}
+
+/** @var ShOptionsConfig $options */
+$options = $response->getData()['OPTIONS'];
+
+$options->addTab(
+	(new Options\Tab('ANNOUNCE'))
+		->setName(Loc::getMessage($options->moduleId.'_TAB_ANNOUNCE_NAME'))
+		->setTitle(Loc::getMessage($options->moduleId.'_TAB_ANNOUNCE_TITLE'))
+		->addOption(
+			(new Options\RowInfo('List'))
+				->setDescription(Loc::getMessage($options->moduleId.'_TAB_ANNOUNCE_List', [
+					'#URL#' => Constants::listUrl(),
+				]))
+				->setType(Options\TypeUIAlert::Note)
+		)
+		->addOption(
+			(new Options\Text('testusers'))
+				->setTitle(Loc::getMessage($options->moduleId.'_TAB_ANNOUNCE_testusers'))
+				->setDescription(Loc::getMessage($options->moduleId.'_TAB_ANNOUNCE_testusers_descr'))
+		)
+);
+
+return $options->get();

@@ -1,0 +1,75 @@
+<?php declare(strict_types=1);
+
+/**
+ * Настраиваемые параметры модуля shef.toolsaiannounce.
+ *
+ * * requireModules -> обязательные модули линейки: autoload.php подключает их
+ *   при каждой загрузке, установщик их удаление не пропустит. Только
+ *   shef.options и shef.problems: от shef.toolsai модуль не зависит, связь с
+ *   другими модулями — событием OnAnnouncementsCollect.
+ * * requirePhpExt -> обязательные расширения PHP
+ * * registerAutoLoadClasses, registerNamespace -> пусто: свои классы ядро
+ *   находит по соглашению (lib/ строчными), чужих библиотек нет
+ * * installEvents -> постоянные подписки: регистрирует InstallEvents()
+ *   установщика, снимает парный UnInstallEvents()
+ * * installDir -> пусто: в /bitrix/admin модуль не копирует, а ПИШЕТ одну
+ *   заглушку страницы списка (Main\AdminPage)
+ * * controllers -> ajax: shef:toolsaiannounce.banner.seen ->
+ *   Shef\ToolsAiAnnounce\Controller\Banner::seenAction()
+ */
+
+return [
+	'requireModules' => [
+		'value' => [
+			'shef.options',
+			'shef.problems',
+		],
+		'readonly' => true,
+	],
+	'requirePhpExt' => [
+		'value' => [
+			'mbstring',
+			'json',
+		],
+		'readonly' => true,
+	],
+	'registerAutoLoadClasses' => [
+		'value' => [],
+		'readonly' => true,
+	],
+	'registerNamespace' => [
+		'value' => [],
+		'readonly' => true,
+	],
+	'options' => [
+		'value' => [],
+		'readonly' => true,
+	],
+	'installEvents' => [
+		'value' => [
+			// Окно новинки на страницах CRM.
+			[
+				'isCompatible' => false,
+				'from' => ['module' => 'main', 'event' => 'OnEpilog'],
+				'to' => [
+					'module' => 'shef.toolsaiannounce',
+					'class' => '\\Shef\\ToolsAiAnnounce\\Internals\\Integration\\Main\\EventHandler\\OnEpilogEventHandler',
+					'function' => 'handle',
+					'sort' => 100,
+				],
+			],
+		],
+		'readonly' => true,
+	],
+	'installDir' => [
+		'value' => [],
+		'readonly' => true,
+	],
+	'controllers' => [
+		'value' => [
+			'defaultNamespace' => '\\Shef\\ToolsAiAnnounce\\Controller',
+			'namespaces' => [],
+		],
+		'readonly' => true,
+	],
+];
