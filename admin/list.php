@@ -58,6 +58,7 @@ $own = Announcements::parse((string)Option::get(Constants::MODULE_ID, Constants:
 $saveOwn = static function(array $items): void
 {
 	Option::set(Constants::MODULE_ID, Constants::OPTION_LIST, (string)json_encode(array_values($items), JSON_UNESCAPED_UNICODE));
+	Collector::clearCache();
 };
 
 if($request->isPost() && (string)$request->getPost('announce') !== '' && check_bitrix_sessid())

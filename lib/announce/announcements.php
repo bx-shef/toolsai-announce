@@ -410,7 +410,7 @@ function slides(onDone){
 		if(!WhatsNew) { onDone(); return; }
 		var w = new WhatsNew({
 			slides: P.items.map(function(a){
-				return {title: a.title, html: '<div style="padding:24px 28px;white-space:normal;font-size:14px;line-height:1.55;color:#333">' + body(a)
+				return {title: esc(a.title), html: '<div style="padding:24px 28px;white-space:normal;font-size:14px;line-height:1.55;color:#333">' + body(a)
 					+ (a.url ? '<p><a href="' + esc(a.url) + '" target="_blank" rel="noopener">' + esc(a.linkText) + '</a></p>' : '') + '</div>'};
 			}),
 			popupOptions: {height: 440},

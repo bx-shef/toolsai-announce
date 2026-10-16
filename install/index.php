@@ -103,6 +103,7 @@ class shef_toolsaiannounce
 		{
 			\Bitrix\Main\Loader::includeModule($this->MODULE_ID);
 			$done = \Shef\ToolsAiAnnounce\Main\Migration::run();
+			\Shef\ToolsAiAnnounce\Announce\Collector::clearCache();
 			$this->report[] = htmlspecialcharsbx((string)Loc::getMessage('SH_ANNOUNCE_MIGRATED', [
 				'#OPTIONS#' => $done['options'] !== [] ? implode(', ', $done['options']) : Loc::getMessage('SH_ANNOUNCE_MIGRATED_NONE'),
 				'#USERS#' => $done['users'],

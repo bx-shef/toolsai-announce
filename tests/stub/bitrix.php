@@ -84,7 +84,8 @@ namespace Bitrix\Main
 			public function __construct(
 				private readonly string $moduleId = '',
 				private readonly string $type = '',
-				private readonly array $parameters = []
+				private readonly array $parameters = [],
+				private readonly mixed $filter = null
 			) {}
 
 			public function getModuleId(): string
@@ -104,8 +105,13 @@ namespace Bitrix\Main
 
 			public function send(): void
 			{
-				foreach(EventManager::$handlers[$this->moduleId][$this->type] ?? [] as $handler)
+				foreach(EventManager::$handlers[$this->moduleId][$this->type] ?? [] as $toModule => $handler)
 				{
+					// Фильтр — как в ядре: по модулю назначения (ключ массива обработчиков).
+					if($this->filter !== null && !in_array($toModule, (array)$this->filter, true))
+					{
+						continue;
+					}
 					$result = $handler($this);
 					if($result !== null && $result !== false)
 					{
@@ -118,6 +124,16 @@ namespace Bitrix\Main
 			public function getResults(): array
 			{
 				return $this->results;
+			}
+		}
+
+		class Error
+		{
+			public function __construct(private readonly string $message = '', private readonly int|string $code = 0) {}
+
+			public function getMessage(): string
+			{
+				return $this->message;
 			}
 		}
 
@@ -166,6 +182,18 @@ namespace Bitrix\Main
 				return new static();
 			}
 
+			/** Как ядро: записи с TO_MODULE_ID — ключ массива обработчиков модуля. */
+			public function findEventHandlers(string $moduleId, string $eventType, ?array $filter = null): array
+			{
+				$list = [];
+				foreach(array_keys(static::$handlers[$moduleId][$eventType] ?? []) as $toModule)
+				{
+					$list[] = ['TO_MODULE_ID' => is_string($toModule) ? $toModule : ''];
+				}
+
+				return $list;
+			}
+
 			public function registerEventHandler(string $fromModule, string $event, string $toModule, string $class, string $method, int $sort = 100): void
 			{
 				static::$registered[] = [$fromModule, $event, $toModule, $class, $method];
@@ -176,9 +204,12 @@ namespace Bitrix\Main
 				static::$registered[] = [$fromModule, $event, $toModule, $class, $method];
 			}
 
+			/** Как таблица b_module_to_module: снимает точное совпадение строк. */
 			public function unRegisterEventHandler(string $fromModule, string $event, string $toModule, string $class, string $method): void
 			{
-				static::$unregistered[] = [$fromModule, $event, $toModule, $class, $method];
+				$row = [$fromModule, $event, $toModule, $class, $method];
+				static::$unregistered[] = $row;
+				static::$registered = array_values(array_filter(static::$registered, static fn(array $r): bool => $r !== $row));
 			}
 		}
 	}
@@ -244,6 +275,106 @@ namespace Bitrix\Main\Page
 			{
 				static::$strings[] = $str;
 			}
+		}
+	}
+}
+
+namespace Bitrix\Main\Data
+{
+	if(!class_exists(Cache::class))
+	{
+		/** Кеш в памяти: ключ — каталог и строка. */
+		class Cache
+		{
+			/** @var array<string, array<string, mixed>> */
+			public static array $store = [];
+			private string $dir = '';
+			private string $key = '';
+
+			public static function createInstance(array $params = []): static
+			{
+				return new static();
+			}
+
+			public function initCache(int $ttl, string $key, string $dir = ''): bool
+			{
+				$this->dir = $dir;
+				$this->key = $key;
+
+				return array_key_exists($key, static::$store[$dir] ?? []);
+			}
+
+			public function getVars(): mixed
+			{
+				return static::$store[$this->dir][$this->key] ?? null;
+			}
+
+			public function startDataCache(): bool
+			{
+				return true;
+			}
+
+			public function endDataCache(mixed $vars = false): void
+			{
+				static::$store[$this->dir][$this->key] = $vars;
+			}
+
+			public function cleanDir(string $dir = ''): void
+			{
+				unset(static::$store[$dir]);
+			}
+		}
+	}
+}
+
+namespace Bitrix\Main\Engine
+{
+	if(!class_exists(Controller::class))
+	{
+		/** Текущий пользователь контроллера. */
+		class CurrentUser
+		{
+			public function __construct(private readonly ?int $id) {}
+
+			public function getId(): ?int
+			{
+				return $this->id;
+			}
+		}
+
+		/** Контроллер: ошибки и текущий пользователь — как в ядре, без жизненного цикла. */
+		class Controller
+		{
+			public static ?int $userId = null;
+			/** @var list<\Bitrix\Main\Error> */
+			public array $errors = [];
+
+			public function addError(\Bitrix\Main\Error $error): static
+			{
+				$this->errors[] = $error;
+
+				return $this;
+			}
+
+			final public function getCurrentUser(): ?CurrentUser
+			{
+				return new CurrentUser(static::$userId);
+			}
+		}
+	}
+}
+
+namespace Bitrix\Main\Engine\ActionFilter
+{
+	if(!class_exists(HttpMethod::class))
+	{
+		class Authentication {}
+		class Csrf {}
+		class HttpMethod
+		{
+			public const METHOD_POST = 'POST';
+
+			public function __construct(public readonly array $methods = []) {}
 		}
 	}
 }

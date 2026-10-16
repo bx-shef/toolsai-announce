@@ -31,9 +31,15 @@ final class OnAnnouncementsCollectEvent extends Event
 	/** Имя события. */
 	public const TYPE = 'OnAnnouncementsCollect';
 
-	/** Новое событие; на каждую отправку — новый объект. */
-	public function __construct()
+	/**
+	 * Новое событие; на каждую отправку — новый объект.
+	 *
+	 * @param string|null $moduleFilter только обработчики этого модуля (TO_MODULE_ID) —
+	 *                                  так Collector зовёт модули по одному, и сбой
+	 *                                  одного не гасит остальные
+	 */
+	public function __construct(?string $moduleFilter = null)
 	{
-		parent::__construct(Constants::MODULE_ID, self::TYPE);
+		parent::__construct(Constants::MODULE_ID, self::TYPE, [], $moduleFilter);
 	}
 }

@@ -73,6 +73,9 @@ Check::same('HTML из настроек не попадает как есть', 
 Check::same('своя картинка, без файлов ядра', [str_contains($js, '<svg'), str_contains($js, '/bitrix/js/')], [true, false]);
 Check::same('отметка при показе — своим действием', str_contains($js, "BX.ajax.runAction(\"shef:toolsaiannounce.banner.seen\""), true);
 Check::same('старого действия shef.toolsai нет', str_contains($js, 'toolsai.kb.seen'), false);
+$slides = A::script(['layout' => A::LAYOUT_SLIDES, 'items' => [$one]]);
+Check::same('слайды: заголовок экранируется (ядро вставляет его через innerHTML)', str_contains($slides, 'title: esc(a.title)'), true);
+Check::same('слайды: сырого заголовка нет', str_contains($slides, 'title: a.title'), false);
 Check::same('без </script> внутри', stripos($js, '</script') === false, true);
 $node = trim((string)shell_exec('command -v node 2>/dev/null'));
 if($node !== '')

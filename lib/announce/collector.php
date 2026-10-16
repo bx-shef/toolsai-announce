@@ -3,6 +3,8 @@
 namespace Shef\ToolsAiAnnounce\Announce;
 
 use Bitrix\Main\Config\Option;
+use Bitrix\Main\Data\Cache;
+use Bitrix\Main\EventManager;
 use Bitrix\Main\EventResult;
 use Shef\ToolsAiAnnounce\Main\Constants;
 use Shef\ToolsAiAnnounce\Public\Event\OnAnnouncementsCollectEvent;
@@ -11,13 +13,25 @@ use Shef\ToolsAiAnnounce\Public\Event\OnAnnouncementsCollectEvent;
  * Итоговый список объявлений: свой список из настроек плюс объявления
  * модулей из события OnAnnouncementsCollect (Announcements::merge()).
  *
- * Сбой обработчика чужого модуля не ломает показ: исключение уходит в лог,
- * остаётся свой список. Конфликты id пишутся в лог один раз — пока набор
+ * Модули зовутся по одному (фильтр события по TO_MODULE_ID): исключение
+ * обработчика одного модуля уходит в конфликты и лог, ответы остальных
+ * остаются. Обработчики без TO_MODULE_ID (runtime addEventHandler без
+ * модуля) не зовутся — подписка модуля-источника постоянная, из установщика.
+ *
+ * Список для страниц CRM кешируется (Bitrix\Main\Data\Cache, CACHE_TTL);
+ * сброс — clearCache() при сохранении списка на странице «Новинки для
+ * сотрудников». Тестовые пользователи и отметки в кеш не входят. Конфликты id пишутся в лог один раз — пока набор
  * конфликтов не изменился (отпечаток в SYS_conflicts), иначе каждая
  * страница CRM писала бы одно и то же.
  */
 final class Collector
 {
+	/** Сколько живёт кеш списка, секунд. */
+	public const CACHE_TTL = 600;
+	/** Каталог кеша. */
+	public const CACHE_DIR = '/shef.toolsaiannounce';
+	private const CACHE_KEY = 'announcements';
+
 	/**
 	 * Итоговый список (с ключом source у каждого объявления).
 	 *
@@ -25,10 +39,50 @@ final class Collector
 	 */
 	public static function collect(): array
 	{
+		try
+		{
+			$cache = Cache::createInstance();
+			if($cache->initCache(self::CACHE_TTL, self::CACHE_KEY, self::CACHE_DIR))
+			{
+				$items = $cache->getVars();
+				if(is_array($items))
+				{
+					return $items;
+				}
+			}
+		}
+		catch(\Throwable)
+		{
+			$cache = null;
+		}
+
 		$merged = static::collectWithConflicts();
 		static::logConflicts($merged['conflicts']);
+		try
+		{
+			if($cache !== null && $cache->startDataCache())
+			{
+				$cache->endDataCache($merged['items']);
+			}
+		}
+		catch(\Throwable)
+		{
+			// Без кеша — просто медленнее
+		}
 
 		return $merged['items'];
+	}
+
+	/** Сбросить кеш списка (после правки списка или смены модулей-источников). */
+	public static function clearCache(): void
+	{
+		try
+		{
+			Cache::createInstance()->cleanDir(self::CACHE_DIR);
+		}
+		catch(\Throwable)
+		{
+		}
 	}
 
 	/**
@@ -39,16 +93,8 @@ final class Collector
 	public static function collectWithConflicts(): array
 	{
 		$own = Announcements::parse((string)Option::get(Constants::MODULE_ID, Constants::OPTION_LIST, ''));
-		$sources = [];
 		$conflicts = [];
-		try
-		{
-			$sources = static::fromResults(static::send());
-		}
-		catch(\Throwable $throwable)
-		{
-			$conflicts[] = 'обработчик события упал: '.$throwable->getMessage();
-		}
+		$sources = static::fromResults(static::send($conflicts));
 		$merged = Announcements::merge($own, $sources);
 		$merged['conflicts'] = array_merge($conflicts, $merged['conflicts']);
 
@@ -81,16 +127,38 @@ final class Collector
 	}
 
 	/**
-	 * Отправить событие.
+	 * Отправить событие каждому модулю-подписчику отдельно.
 	 *
-	 * @return array<mixed> ответы обработчиков
+	 * @param list<string> $errors сюда — сбои обработчиков
+	 * @return list<mixed> ответы обработчиков
 	 */
-	private static function send(): array
+	private static function send(array &$errors): array
 	{
-		$event = new OnAnnouncementsCollectEvent();
-		$event->send();
+		$modules = [];
+		foreach(EventManager::getInstance()->findEventHandlers(Constants::MODULE_ID, OnAnnouncementsCollectEvent::TYPE) as $handler)
+		{
+			$moduleId = (string)($handler['TO_MODULE_ID'] ?? '');
+			if($moduleId !== '')
+			{
+				$modules[$moduleId] = true;
+			}
+		}
+		$results = [];
+		foreach(array_keys($modules) as $moduleId)
+		{
+			try
+			{
+				$event = new OnAnnouncementsCollectEvent($moduleId);
+				$event->send();
+				array_push($results, ...array_values($event->getResults()));
+			}
+			catch(\Throwable $throwable)
+			{
+				$errors[] = $moduleId.': обработчик события упал: '.$throwable->getMessage();
+			}
+		}
 
-		return $event->getResults();
+		return $results;
 	}
 
 	/**

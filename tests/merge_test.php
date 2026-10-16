@@ -13,6 +13,7 @@ require_once $root.'/tests/assert.php';
 
 use Bitrix\Main\Config\Option;
 use Bitrix\Main\Context;
+use Bitrix\Main\Data\Cache;
 use Bitrix\Main\EventManager;
 use Bitrix\Main\EventResult;
 use Bitrix\Main\Page\Asset;
@@ -47,20 +48,30 @@ Check::group('Collector: событие');
 $event = new OnAnnouncementsCollectEvent();
 Check::same('модуль и имя события', [$event->getModuleId(), $event->getEventType()], ['shef.toolsaiannounce', 'OnAnnouncementsCollect']);
 EventManager::$handlers['shef.toolsaiannounce']['OnAnnouncementsCollect'] = [
-	static fn() => new EventResult(EventResult::SUCCESS, ['announcements' => [$ann('calls-ai', 'модуль', ['audience' => 'test'])]], 'shef.toolsai'),
-	static fn() => new EventResult(EventResult::ERROR, ['announcements' => [$ann('err')]], 'shef.err'),
-	static fn() => ['announcements' => [$ann('undef')]],
+	'shef.toolsai' => static fn() => new EventResult(EventResult::SUCCESS, ['announcements' => [$ann('calls-ai', 'модуль', ['audience' => 'test'])]], 'shef.toolsai'),
+	'shef.err' => static fn() => new EventResult(EventResult::ERROR, ['announcements' => [$ann('err')]], 'shef.err'),
+	'shef.undef' => static fn() => ['announcements' => [$ann('undef')]],
 ];
 Option::$values = [];
+Cache::$store = [];
 $items = Collector::collect();
 Check::same('только SUCCESS', array_column($items, 'id'), ['calls-ai']);
 Check::same('конфликтов нет — лог не трогаем', Option::get(Constants::MODULE_ID, Constants::OPTION_CONFLICTS, 'нет'), 'нет');
 Option::set(Constants::MODULE_ID, Constants::OPTION_LIST, (string)json_encode([$ann('calls-ai', 'своё')]));
-Check::same('настройки побеждают', Collector::collect()[0]['title'], 'своё');
-EventManager::$handlers['shef.toolsaiannounce']['OnAnnouncementsCollect'][] = static fn() => throw new RuntimeException('упал');
+Check::same('кеш: до сброса — прежний список', Collector::collect()[0]['title'], 'модуль');
+Collector::clearCache();
+Check::same('после сброса — настройки побеждают', Collector::collect()[0]['title'], 'своё');
+EventManager::$handlers['shef.toolsaiannounce']['OnAnnouncementsCollect'] = [
+	'shef.bad' => static fn() => throw new RuntimeException('упал'),
+	'shef.good' => static fn() => new EventResult(EventResult::SUCCESS, ['announcements' => [$ann('good-1')]], 'shef.good'),
+];
 $r = Collector::collectWithConflicts();
-Check::same('сбой обработчика — остаётся свой список', array_column($r['items'], 'id'), ['calls-ai']);
-Check::same('сбой обработчика — в конфликты', str_contains($r['conflicts'][0], 'упал'), true);
+Check::same('сбой одного обработчика — ответы остальных остаются', array_column($r['items'], 'id'), ['calls-ai', 'good-1']);
+Check::same('сбой обработчика — в конфликты с модулем', str_contains($r['conflicts'][0], 'shef.bad') && str_contains($r['conflicts'][0], 'упал'), true);
+EventManager::$handlers['shef.toolsaiannounce']['OnAnnouncementsCollect'][0] = static fn() => new EventResult(EventResult::SUCCESS, ['announcements' => [$ann('anon')]], 'x');
+Check::same('обработчик без модуля назначения не зовётся', in_array('anon', array_column(Collector::collectWithConflicts()['items'], 'id'), true), false);
+unset(EventManager::$handlers['shef.toolsaiannounce']['OnAnnouncementsCollect'][0]);
+Collector::clearCache();
 Collector::collect();
 Check::same('конфликты есть — отпечаток записан', strlen((string)Option::get(Constants::MODULE_ID, Constants::OPTION_CONFLICTS, '')), 32);
 EventManager::$handlers = [];
@@ -83,8 +94,9 @@ $GLOBALS['USER'] = new class
 Option::$values = [];
 Option::set(Constants::MODULE_ID, Constants::OPTION_TEST_USERS, '1');
 EventManager::$handlers['shef.toolsaiannounce']['OnAnnouncementsCollect'] = [
-	static fn() => new EventResult(EventResult::SUCCESS, ['announcements' => [$ann('calls-ai', 'ИИ в звонках', ['audience' => 'test'])]], 'shef.toolsai'),
+	'shef.toolsai' => static fn() => new EventResult(EventResult::SUCCESS, ['announcements' => [$ann('calls-ai', 'ИИ в звонках', ['audience' => 'test'])]], 'shef.toolsai'),
 ];
+Cache::$store = [];
 $show = static function(string $page, bool $ajax = false, array $params = []): int
 {
 	Context::$page = $page;
@@ -105,8 +117,9 @@ Check::same('не тестовому — тестовое не показыва�
 $GLOBALS['USER']->id = 1;
 \CUserOptions::SetOption(Constants::MODULE_ID, Constants::SEEN_OPTION, ['calls-ai'], false, 1);
 Check::same('видел — не показываем', $show('/crm/deal/'), 0);
-EventManager::$handlers['shef.toolsaiannounce']['OnAnnouncementsCollect'] = [static fn() => throw new RuntimeException('x')];
+EventManager::$handlers['shef.toolsaiannounce']['OnAnnouncementsCollect'] = ['shef.x' => static fn() => throw new RuntimeException('x')];
 \CUserOptions::$values = [];
+Cache::$store = [];
 Check::same('сбой — CRM не ломается', $show('/crm/deal/'), 0);
 
 Check::finish();
