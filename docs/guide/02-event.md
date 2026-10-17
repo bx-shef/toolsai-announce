@@ -122,3 +122,11 @@ return new EventResult(EventResult::SUCCESS, ['places' => [
 	['path' => '/acme/board/', 'title' => 'Акме: доска'],
 ]], 'acme.demo');
 ```
+
+## Подписка модуля на OnViewSettingsMenuBuild
+
+Сам модуль отвечает на событие вида «ИИ» `shef.toolsai:OnViewSettingsMenuBuild`
+(shef.toolsai 1.53.0, у нас 1.4.1): пункт «Оповещения для сотрудников» в меню
+шестерёнки ведёт на страницу списка, только при праве на модуль от R. Как
+ставится подписка (в том числе при обновлении копированием) — в
+[установке, п. 4](03-install.md).

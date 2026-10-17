@@ -50,4 +50,5 @@ PHP 8.2+, главный модуль 22.600.300+, портал в UTF-8.
 
 Проверка: модуль не удалится, пока его требует другой модуль
 (`requireModules`). Снимаются заглушка (только своя) и подписки
-`main:OnEpilog` и `shef.toolsai:OnViewSettingsMenuBuild`. Без `savedata` удаляются настройки модуля и отметки «видел».
+`main:OnEpilog` и `shef.toolsai:OnViewSettingsMenuBuild`. Без `savedata`
+удаляются настройки модуля и отметки «видел».
