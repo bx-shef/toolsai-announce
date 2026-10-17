@@ -64,7 +64,7 @@ EventManager::$registered = [];
 $module->InstallEvents();
 $module->InstallEvents();
 Check::same('чужие подписки shef.toolsai установка не снимает', array_filter(EventManager::$unregistered, static fn(array $v): bool => $v[2] === 'shef.toolsai'), []);
-Check::same('повторная установка — одна регистрация', count(EventManager::$registered), 1);
+Check::same('повторная установка — по одной регистрации на подписку', count(EventManager::$registered), count($settings['installEvents']['value']));
 Check::same('регистрируется OnEpilog модуля', array_slice(EventManager::$registered[0], 0, 3), ['main', 'OnEpilog', Constants::MODULE_ID]);
 $module->UnInstallEvents();
 Check::same('удаление снимает всё', EventManager::$registered, []);

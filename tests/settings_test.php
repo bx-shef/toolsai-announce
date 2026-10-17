@@ -42,8 +42,10 @@ Check::same('lib/ не подключает shef.toolsai', str_contains($code, "
 
 Check::group('подписки');
 $events = $value('installEvents');
-Check::same('одна подписка', count($events), 1);
-[$event] = $events;
+Check::same('две подписки', count($events), 2);
+[$event, $menuEvent] = $events;
+Check::same('shef.toolsai:OnViewSettingsMenuBuild', [$menuEvent['from']['module'], $menuEvent['from']['event'], $menuEvent['to']['module'], $menuEvent['isCompatible']], ['shef.toolsai', 'OnViewSettingsMenuBuild', Constants::MODULE_ID, false]);
+Check::same('класс обработчика меню есть, метод статический', class_exists(ltrim($menuEvent['to']['class'], '\\')) && (new ReflectionMethod(ltrim($menuEvent['to']['class'], '\\'), $menuEvent['to']['function']))->isStatic(), true);
 Check::same('main:OnEpilog', [$event['from']['module'], $event['from']['event'], $event['to']['module']], ['main', 'OnEpilog', Constants::MODULE_ID]);
 Check::same('класс обработчика есть', class_exists(ltrim($event['to']['class'], '\\')), true);
 Check::same('метод обработчика статический', (new ReflectionMethod(ltrim($event['to']['class'], '\\'), $event['to']['function']))->isStatic(), true);
@@ -56,13 +58,14 @@ $GLOBALS['APPLICATION'] = null;
 require $root.'/install/index.php';
 $module = new shef_toolsaiannounce();
 Check::same('MODULE_ID', $module->MODULE_ID, Constants::MODULE_ID);
-Check::same('версия из version.php', $module->MODULE_VERSION, '1.4.0');
+Check::same('версия из version.php', $module->MODULE_VERSION, '1.4.1');
 $module->InstallEvents();
 $handler = ['main', 'OnEpilog', Constants::MODULE_ID, $event['to']['class'], 'handle'];
-Check::same('InstallEvents регистрирует OnEpilog', \Bitrix\Main\EventManager::$registered, [$handler]);
+$menuHandler = ['shef.toolsai', 'OnViewSettingsMenuBuild', Constants::MODULE_ID, $menuEvent['to']['class'], 'handle'];
+Check::same('InstallEvents регистрирует обе', \Bitrix\Main\EventManager::$registered, [$handler, $menuHandler]);
 \Bitrix\Main\EventManager::$unregistered = [];
 $module->UnInstallEvents();
-Check::same('UnInstallEvents снимает (с «\\» и без)', \Bitrix\Main\EventManager::$unregistered, [$handler, ['main', 'OnEpilog', Constants::MODULE_ID, ltrim($event['to']['class'], '\\'), 'handle']]);
+Check::same('UnInstallEvents снимает (с «\\» и без)', \Bitrix\Main\EventManager::$unregistered, [$handler, ['main', 'OnEpilog', Constants::MODULE_ID, ltrim($event['to']['class'], '\\'), 'handle'], $menuHandler, ['shef.toolsai', 'OnViewSettingsMenuBuild', Constants::MODULE_ID, ltrim($menuEvent['to']['class'], '\\'), 'handle']]);
 
 Check::group('удаление');
 $GLOBALS['CACHE_MANAGER'] = new class { public function CleanAll(): void {} };
