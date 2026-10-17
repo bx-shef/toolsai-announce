@@ -263,6 +263,35 @@ namespace Bitrix\Main
 	}
 }
 
+namespace Bitrix\Main
+{
+	if(!class_exists(UserTable::class))
+	{
+		/** Пользователи — из $GLOBALS['TEST_USERS'] (id => строка); фильтр только =ID / @ID. */
+		class UserTable
+		{
+			public static int $calls = 0;
+
+			public static function getList(array $params = []): object
+			{
+				static::$calls++;
+				$ids = (array)($params['filter']['=ID'] ?? $params['filter']['@ID'] ?? []);
+				$rows = array_values(array_filter($GLOBALS['TEST_USERS'] ?? [], static fn(array $r): bool => in_array((int)$r['ID'], array_map('intval', $ids), true)));
+
+				return new class($rows)
+				{
+					public function __construct(private array $rows) {}
+
+					public function fetch(): array|false
+					{
+						return array_shift($this->rows) ?? false;
+					}
+				};
+			}
+		}
+	}
+}
+
 namespace Bitrix\Main\Page
 {
 	if(!class_exists(Asset::class))

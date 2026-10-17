@@ -134,6 +134,32 @@ Context::$uri = '/shef/toolsai/view/?type=3';
 Check::same('другие параметры — ничего', $show('/shef/toolsai/view/index.php'), 0);
 Context::$uri = '/crm/deal/';
 Check::same('CRM — ничего (место другое)', $show('/crm/deal/index.php'), 0);
+Check::group('эпилог: отдел и новый сотрудник');
+$GLOBALS['TEST_USERS'] = [
+	21 => ['ID' => 21, 'UF_DEPARTMENT' => [3], 'DATE_REGISTER' => new class { public function getTimestamp(): int { return time() - 400 * 86400; } }],
+	22 => ['ID' => 22, 'UF_DEPARTMENT' => [9], 'DATE_REGISTER' => new class { public function getTimestamp(): int { return time() - 400 * 86400; } }],
+	23 => ['ID' => 23, 'UF_DEPARTMENT' => [3], 'DATE_REGISTER' => new class { public function getTimestamp(): int { return time(); } }],
+];
+\Bitrix\Main\UserTable::$calls = 0;
+Option::set(Constants::MODULE_ID, Constants::OPTION_LIST, (string)json_encode([$ann('dep', 'Отделу', ['audience' => 'custom', 'departments' => [3], 'published' => time() - 10 * 86400])]));
+Cache::$store = [];
+\CUserOptions::$values = [];
+Context::$uri = '/crm/';
+$GLOBALS['USER']->id = 21;
+Check::same('сотрудник отдела — окно', $show('/crm/index.php'), 1);
+$GLOBALS['USER']->id = 22;
+Check::same('другой отдел — ничего', $show('/crm/index.php'), 0);
+$GLOBALS['USER']->id = 23;
+Check::same('пришёл после публикации — ничего', $show('/crm/index.php'), 0);
+$calls = \Bitrix\Main\UserTable::$calls;
+$GLOBALS['USER']->id = 21;
+\CUserOptions::SetOption(Constants::MODULE_ID, Constants::SEEN_OPTION, ['dep'], false, 21);
+Check::same('всё показано — в базу не ходим', [$show('/crm/index.php'), \Bitrix\Main\UserTable::$calls], [0, $calls]);
+Option::set(Constants::MODULE_ID, Constants::OPTION_LIST, (string)json_encode([$ann('all-new', 'Всем', ['audience' => 'all', 'showToNew' => true])]));
+Cache::$store = [];
+$GLOBALS['USER']->id = 24;
+Check::same('аудитория «все» и «и новым» — без запроса к базе', [$show('/crm/index.php'), \Bitrix\Main\UserTable::$calls], [1, $calls]);
+$GLOBALS['USER']->id = 1;
 Context::$uri = '';
 Check::same('дата публикации записана в журнал первого появления', isset(json_decode((string)Option::get(Constants::MODULE_ID, Constants::OPTION_FIRST_SEEN, ''), true)['ai-view']), true);
 

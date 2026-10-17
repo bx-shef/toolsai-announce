@@ -303,7 +303,7 @@ BX.ready(function(){
 		var peopleBox = el('div'); people.renderTo(peopleBox);
 
 		var two = function(a, b){ var w = el('div', 'shef-ann-two'); w.appendChild(a); w.appendChild(b); return w; };
-		var rVideo = field('Ссылка на видео', f.video, 'YouTube, Rutube, VK Видео или файл .mp4 — только https.');
+		var rVideo = field('Ссылка на видео', f.video, 'YouTube, Rutube, VK Видео (https) или файл .mp4 с портала (/upload/…).');
 		var rPeople = field('Сотрудники и отделы', peopleBox);
 		var rDays = field('Через сколько дней', f.repeatDays);
 		[

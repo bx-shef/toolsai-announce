@@ -90,7 +90,8 @@ class Announcement extends Controller
 			return null;
 		}
 		$id = strtolower(trim((string)($fields['id'] ?? '')));
-		$fields['id'] = $id !== '' ? $id : 'n-'.date('Ymd-His');
+		// новое: дата и случайный хвост — два сохранения в одну секунду не совпадут
+		$fields['id'] = $id !== '' ? $id : 'n-'.date('Ymd').'-'.bin2hex(random_bytes(4));
 		$fields['active'] = in_array($fields['active'] ?? '', ['Y', 'true', true, 1, '1'], true);
 		$fields['showToNew'] = in_array($fields['showToNew'] ?? '', ['Y', 'true', true, 1, '1'], true);
 		$old = $this->find($fields['id']);
@@ -137,9 +138,9 @@ class Announcement extends Controller
 		$own = OwnStore::load();
 		foreach($own as $item)
 		{
-			if($item['id'] === $id && (int)$item['image'] > 0 && class_exists('CFile'))
+			if($item['id'] === $id)
 			{
-				\CFile::Delete((int)$item['image']);
+				$this->dropFile((int)$item['image']);
 			}
 		}
 		OwnStore::save(Announcements::remove($own, $id));
@@ -160,18 +161,16 @@ class Announcement extends Controller
 		{
 			return null;
 		}
-		$file = Context::getCurrent()->getRequest()->getFile('image');
-		$tmp = is_array($file) ? (string)($file['tmp_name'] ?? '') : '';
-		$info = $tmp !== '' && is_uploaded_file($tmp) ? @getimagesize($tmp) : false;
-		$error = Media::imageError((string)($file['name'] ?? ''), (int)($file['size'] ?? 0), is_array($info) ? (string)$info['mime'] : '');
+		[$file, $mime] = $this->upload();
+		$error = Media::imageError((string)($file['name'] ?? ''), (int)($file['size'] ?? 0), $mime);
 		if($error !== null)
 		{
 			$this->addError(new Error($error, 'image'));
 
 			return null;
 		}
-		$file['name'] = 'announce.'.Media::IMAGE_TYPES[$info['mime']];
-		$file['type'] = $info['mime'];
+		$file['name'] = 'announce.'.Media::IMAGE_TYPES[$mime];
+		$file['type'] = $mime;
 		$file['MODULE_ID'] = Constants::MODULE_ID;
 		$id = (int)\CFile::SaveFile($file, Constants::MODULE_ID);
 		if($id <= 0)
@@ -182,6 +181,33 @@ class Announcement extends Controller
 		}
 
 		return ['id' => $id, 'src' => (string)\CFile::GetPath($id)];
+	}
+
+	/**
+	 * Удалить картинку, только если файл загружен этим модулем: картинку
+	 * объявления модуля-источника (в копии или при возврате) не трогаем.
+	 */
+	private function dropFile(int $id): void
+	{
+		if($id > 0 && $this->ownFile($id))
+		{
+			\CFile::Delete($id);
+		}
+	}
+
+	/**
+	 * Загруженный файл формы (поле image) и его тип по содержимому.
+	 *
+	 * @return array{0: array<string, mixed>, 1: string} файл и MIME ('' — не картинка)
+	 */
+	protected function upload(): array
+	{
+		$file = Context::getCurrent()->getRequest()->getFile('image');
+		$file = is_array($file) ? $file : [];
+		$tmp = (string)($file['tmp_name'] ?? '');
+		$info = $tmp !== '' && is_uploaded_file($tmp) ? @getimagesize($tmp) : false;
+
+		return [$file, is_array($info) ? (string)$info['mime'] : ''];
 	}
 
 	/** Файл загружен этим модулем (uploadImage), а не чужой файл портала. */
@@ -257,9 +283,9 @@ class Announcement extends Controller
 
 			return null;
 		}
-		if($old !== null && (int)($old['image'] ?? 0) > 0 && (int)$old['image'] !== $item['image'] && ($old['source'] ?? '') === Announcements::SOURCE_SETTINGS && class_exists('CFile'))
+		if($old !== null && (int)($old['image'] ?? 0) !== $item['image'])
 		{
-			\CFile::Delete((int)$old['image']);
+			$this->dropFile((int)($old['image'] ?? 0));
 		}
 		OwnStore::save($list);
 

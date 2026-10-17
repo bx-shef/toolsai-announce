@@ -7,7 +7,8 @@ namespace Shef\ToolsAiAnnounce\Announce;
  *
  * Видео встраивается только с белого списка хостов и только по https:
  * YouTube (через youtube-nocookie.com), Rutube, VK Видео; файл .mp4 — тегом
- * <video> (https или адрес портала от корня). Чужой адрес — null, такое видео
+ * <video>, только с портала (путь от корня, например /upload/…): внешний
+ * mp4 не пускаем. Чужой адрес — null, такое видео
  * не сохраняется. Адрес плеера собирается из разобранного id, а не из
  * присланной строки — в iframe не попадёт ничего, кроме id ролика.
  *
@@ -50,10 +51,6 @@ final class Media
 		$host = strtolower($parts['host']);
 		$path = (string)($parts['path'] ?? '');
 		parse_str((string)($parts['query'] ?? ''), $query);
-		if(preg_match('~\.mp4$~i', $path))
-		{
-			return ['type' => 'mp4', 'src' => 'https://'.$host.$path];
-		}
 		if(!in_array($host, self::VIDEO_HOSTS, true))
 		{
 			return null;

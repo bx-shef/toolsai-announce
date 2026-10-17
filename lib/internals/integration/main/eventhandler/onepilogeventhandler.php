@@ -48,12 +48,25 @@ final class OnEpilogEventHandler
 				return;
 			}
 			$userId = (int)$USER->GetID();
+			$seen = SeenStore::get($userId);
+			$ctx = ['now' => time(), 'stamps' => SeenStore::stamps($userId)];
+			// отсев без базы: выключенные, вне периода, уже показанные
+			$seenFlip = array_flip($seen);
+			$items = array_values(array_filter($items, static fn(array $i): bool => Announcements::isDue($i, isset($seenFlip[$i['id']]), $ctx)));
+			if($items === [])
+			{
+				return;
+			}
+			if(Announcements::needsUserContext($items))
+			{
+				$ctx += static::userContext($userId);
+			}
 			$plan = Announcements::plan(
 				$items,
-				SeenStore::get($userId),
+				$seen,
 				$userId,
 				Announcements::testUsers((string)Option::get(Constants::MODULE_ID, Constants::OPTION_TEST_USERS, '1')),
-				['now' => time(), 'stamps' => SeenStore::stamps($userId)] + static::userContext($userId)
+				$ctx
 			);
 			if($plan !== null)
 			{
@@ -76,6 +89,20 @@ final class OnEpilogEventHandler
 	 * @return array{departments?: list<int>, registered?: int}
 	 */
 	public static function userContext(int $userId): array
+	{
+		if(isset(self::$users[$userId]))
+		{
+			return self::$users[$userId];
+		}
+
+		return self::$users[$userId] = static::loadUserContext($userId);
+	}
+
+	/** @var array<int, array> данные сотрудника за хит (OnEpilog может прийти не раз) */
+	private static array $users = [];
+
+	/** @return array{departments?: list<int>, registered?: int} */
+	private static function loadUserContext(int $userId): array
 	{
 		try
 		{

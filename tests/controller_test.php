@@ -21,6 +21,40 @@ use Shef\ToolsAiAnnounce\Announce\SeenStore;
 use Shef\ToolsAiAnnounce\Controller\Announcement;
 use Shef\ToolsAiAnnounce\Main\Constants;
 
+/** CFile на заглушке: файлы по id с модулем-владельцем, журнал удалений и сохранений. */
+class CFile
+{
+	/** @var array<int, string> id => MODULE_ID */
+	public static array $files = [];
+	public static array $deleted = [];
+	public static array $saved = [];
+
+	public static function GetByID(int $id): object
+	{
+		$row = isset(static::$files[$id]) ? ['ID' => $id, 'MODULE_ID' => static::$files[$id]] : false;
+
+		return new class($row) { public function __construct(private $row) {} public function Fetch() { return $this->row; } };
+	}
+
+	public static function Delete(int $id): void
+	{
+		static::$deleted[] = $id;
+	}
+
+	public static function SaveFile(array $file, string $dir): int
+	{
+		static::$saved[] = [$file, $dir];
+		static::$files[100] = (string)$file['MODULE_ID'];
+
+		return 100;
+	}
+
+	public static function GetPath(int $id): string
+	{
+		return '/upload/'.$id.'.png';
+	}
+}
+
 $make = static function(string $right): Announcement
 {
 	Controller::$userId = 3;
@@ -63,8 +97,16 @@ Check::same('новое: id n-…, место, опубликовано', [str_s
 $c = $make('W');
 $c->saveAction(['id' => $new['id'], 'title' => 'Новое 2', 'active' => 'Y']);
 Check::same('правка: тот же id, дата публикации та же', [count(OwnStore::load()), OwnStore::load()[0]['title'], OwnStore::load()[0]['published']], [1, 'Новое 2', $new['published']]);
+\CFile::$files = [77 => 'other.module'];
 $c = $make('W');
-Check::same('чужой файл картинки — без CFile не принимается', [$c->saveAction(['title' => 'X', 'image' => 77]), count($c->errors)], [null, 1]);
+Check::same('чужой файл картинки не принимается', [$c->saveAction(['title' => 'X', 'image' => 77]), count($c->errors)], [null, 1]);
+$c1 = $make('W');
+$c1->saveAction(['title' => 'Один']);
+$c2 = $make('W');
+$c2->saveAction(['title' => 'Два']);
+$ids = array_column(OwnStore::load(), 'id');
+Check::same('id новых — без совпадений, со случайным хвостом', [count(array_unique($ids)), (bool)preg_match('/^n-\d{8}-[0-9a-f]{8}$/', end($ids))], [count($ids), true]);
+OwnStore::save([OwnStore::load()[0]]);
 
 Check::group('модульное: копия, переключение, возврат');
 $c = $make('W');
@@ -81,6 +123,52 @@ $c = $make('W');
 Check::same('нет такого — ошибка', [$c->toggleAction('nope'), $messages($c)], [null, ['Объявление не найдено. Обновите страницу.']]);
 $c = $make('W');
 Check::same('плохой id — ошибка', [$c->deleteAction('<x>'), count($c->errors)], [null, 1]);
+
+Check::group('картинка: удаление только своего файла');
+\CFile::$files = [55 => 'other.module', 56 => Constants::MODULE_ID];
+\CFile::$deleted = [];
+$list = OwnStore::load();
+$list[] = ['id' => 'mod-1', 'title' => 'Копия', 'image' => 55, 'active' => true];
+OwnStore::save(\Shef\ToolsAiAnnounce\Announce\Announcements::normalizeList($list));
+$make('W')->deleteAction('mod-1');
+Check::same('«Вернуть как в модуле»: файл модуля не удаляется', \CFile::$deleted, []);
+$c = $make('W');
+$c->saveAction(['id' => 'own-img', 'title' => 'С картинкой', 'image' => 56]);
+$c = $make('W');
+$c->saveAction(['id' => 'own-img', 'title' => 'Без картинки', 'image' => 0]);
+Check::same('замена своей картинки — свой файл удаляется', \CFile::$deleted, [56]);
+$c = $make('W');
+Check::same('объявлению модуля картинку не задать', \Shef\ToolsAiAnnounce\Announce\Announcements::merge([], [['moduleId' => 'm', 'announcements' => [['id' => 'x', 'title' => 'X', 'image' => 55]]]])['items'][0]['image'], 0);
+
+Check::group('загрузка картинки');
+$up = static function(string $right, array $file, string $mime): Announcement
+{
+	Controller::$userId = 3;
+
+	return new class($right, $file, $mime) extends Announcement
+	{
+		public function __construct(private readonly string $r, private readonly array $f, private readonly string $m) {}
+
+		protected function right(): string
+		{
+			return $this->r;
+		}
+
+		protected function upload(): array
+		{
+			return [$this->f, $this->m];
+		}
+	};
+};
+\CFile::$saved = [];
+$c = $up('R', ['name' => 'a.png', 'size' => 10], 'image/png');
+Check::same('без права W — нельзя', [$c->uploadImageAction(), count($c->errors), \CFile::$saved], [null, 1, []]);
+$c = $up('W', ['name' => 'a.svg', 'size' => 10], 'image/svg+xml');
+Check::same('svg — нельзя', [$c->uploadImageAction(), \CFile::$saved], [null, []]);
+$c = $up('W', ['name' => 'a.png', 'size' => 0], '');
+Check::same('пустой — нельзя', [$c->uploadImageAction(), \CFile::$saved], [null, []]);
+$c = $up('W', ['name' => 'evil.php', 'size' => 10, 'tmp_name' => '/tmp/x'], 'image/png');
+Check::same('png — в хранилище с модулем, имя своё', [$c->uploadImageAction(), \CFile::$saved[0][0]['MODULE_ID'], \CFile::$saved[0][0]['name'], \CFile::$saved[0][1]], [['id' => 100, 'src' => '/upload/100.png'], Constants::MODULE_ID, 'announce.png', Constants::MODULE_ID]);
 
 Check::group('показать мне снова');
 \CUserOptions::$values = [];

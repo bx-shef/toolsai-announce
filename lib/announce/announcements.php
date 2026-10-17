@@ -226,7 +226,7 @@ final class Announcements
 		}
 		if($str('video') !== '' && Media::video($str('video')) === null)
 		{
-			$errors[] = 'Видео: нужна https-ссылка на YouTube, Rutube, VK Видео или файл .mp4.';
+			$errors[] = 'Видео: нужна https-ссылка на YouTube, Rutube, VK Видео или файл .mp4 с портала (/upload/…).';
 		}
 		if(($fields['layout'] ?? '') === self::LAYOUT_VIDEO && $str('video') === '')
 		{
@@ -398,6 +398,8 @@ final class Announcements
 				$id = $item['id'];
 				if(!isset($owner[$id]))
 				{
+					// картинку модулю не задать: только свой файл со страницы списка
+					$item['image'] = 0;
 					$item['source'] = $moduleId;
 					$items[$id] = $item;
 					$owner[$id] = $moduleId;
@@ -573,6 +575,26 @@ final class Announcements
 			self::REPEAT_DAYS => $stamp === null || $now - (int)($stamp['t'] ?? 0) >= max(1, (int)($item['repeatDays'] ?? 7)) * 86400,
 			default => !$seen,
 		};
+	}
+
+	/**
+	 * Нужны ли данные сотрудника из базы (отделы, дата регистрации) для
+	 * выбора среди этих объявлений: есть аудитория custom или объявление без
+	 * showToNew с датой публикации. Иначе запрос не делаем.
+	 *
+	 * @param list<array> $items кандидаты (уже по месту и isDue())
+	 */
+	public static function needsUserContext(array $items): bool
+	{
+		foreach($items as $item)
+		{
+			if(($item['audience'] ?? '') === self::AUDIENCE_CUSTOM || (empty($item['showToNew']) && (int)($item['published'] ?? 0) > 0))
+			{
+				return true;
+			}
+		}
+
+		return false;
 	}
 
 	/**

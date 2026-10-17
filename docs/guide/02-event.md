@@ -28,16 +28,15 @@
 | `text` | текст до 2000 символов; строка с «• » — пункт списка | пусто |
 | `url` | ссылка, только `https://` | без кнопки |
 | `linkText` | текст кнопки, до 60 | «Подробнее» |
-| `audience` | `test` — тестовым пользователям, `all` — всем | `test` |
+| `audience` | `test` — тестовым пользователям, `all` — всем, `custom` — сотрудникам `users` и отделам `departments` (списки ID) | `test` |
 | `active` | показывать | `false` |
 | `layout` | `cosmos` — обычное окно, `important` — важное, `danger` — предупреждение, `congrats` — поздравление, `video` — обучающее видео, `slides` — слайды «Что нового» | `cosmos` |
 | `places` | где показывать: список адресов от корня сайта, можно с параметрами (`/shef/toolsai/view/?type=2`), до 10 | `['/crm/']` |
-| `video` | для `video`: https-ссылка YouTube, Rutube, VK Видео или `.mp4` | пусто |
+| `video` | для `video`: https-ссылка YouTube, Rutube, VK Видео или `.mp4` с портала (`/upload/…`) | пусто |
 | `dateFrom`, `dateTo` | период показа, `ГГГГ-ММ-ДД` включительно | без периода |
 | `sort` | порядок, 0–9999, меньше — раньше | 500 |
 | `repeat`, `repeatDays` | `once`, `until` (пока не нажмёт «Понятно»), `days` (раз в `repeatDays` дней, 1–365) | `once`, 7 |
 | `buttonColor` | `violet`, `blue`, `green`, `orange`, `red` | `violet` |
-| `audience` = `custom` | плюс `users` и `departments` — списки ID | — |
 | `published` | дата публикации: метка времени или `ГГГГ-ММ-ДД` | первое появление в списке |
 | `showToNew` | показывать сотрудникам, пришедшим после `published` | `false` (у `video` — `true`) |
 
@@ -106,7 +105,9 @@ final class OnAnnouncementsCollectEventHandler
 * Ответ: `EventResult::SUCCESS`, `['places' => [['path' => '/acme/', 'title' => 'Акме']]]`,
   третий аргумент — id модуля. `path` — адрес от корня сайта (с «/», без
   пробелов и кавычек), `title` — до 80 символов. Повтор адреса — остаётся
-  первое название (свои места модуля — первыми).
+  первое название. Порядок приоритета: встроенные места модуля → ответы
+  модулей на событие → вид «ИИ» shef.toolsai (если стоит и его адрес ещё не
+  занят).
 * Подписка и вызов — как у `OnAnnouncementsCollect`: постоянная, модули по
   одному.
 
