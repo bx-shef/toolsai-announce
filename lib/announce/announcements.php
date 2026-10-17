@@ -127,7 +127,8 @@ final class Announcements
 	 *
 	 * Поля, которых не было до 1.4.0, у старых объявлений получают значения
 	 * по умолчанию — поведение прежнее: places [/crm/], repeat once, без
-	 * периода, без картинки и видео, sort 500, кнопка фиолетовая.
+	 * периода, без картинки и видео, sort 500, кнопка фиолетовая. art (1.5.0)
+	 * пусто — картинка по виду окна (Art::pick()).
 	 *
 	 * @param array<string, mixed> $item
 	 * @return array<string, mixed>|null
@@ -147,6 +148,7 @@ final class Announcements
 		$color = (string)($item['buttonColor'] ?? '');
 		$audience = (string)($item['audience'] ?? '');
 		$video = $str('video');
+		$art = $str('art');
 
 		return [
 			'id' => $id,
@@ -167,6 +169,7 @@ final class Announcements
 			'repeatDays' => is_numeric($item['repeatDays'] ?? null) ? max(1, min(365, (int)$item['repeatDays'])) : 7,
 			'buttonColor' => isset(self::BUTTON_COLORS[$color]) ? $color : 'violet',
 			'image' => is_numeric($item['image'] ?? null) ? max(0, (int)$item['image']) : 0,
+			'art' => isset(Art::ARTS[$art]) ? $art : '',
 			'video' => Media::video($video) !== null ? $video : '',
 			'published' => static::stamp($item['published'] ?? null),
 			'showToNew' => array_key_exists('showToNew', $item) ? !empty($item['showToNew']) : ($layout === self::LAYOUT_VIDEO),
@@ -736,12 +739,15 @@ final class Announcements
 		$json = static fn(mixed $v): string => (string)json_encode($v, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT);
 		$data = $json([
 			'layout' => $plan['layout'],
-			'items' => array_map(static fn(array $i): array => [
+			// картинка нужна только окну (не слайдам) и только первому объявлению
+			'css' => $plan['layout'] !== self::LAYOUT_SLIDES ? Art::css() : '',
+			'items' => array_map(static fn(array $i, int $n): array => [
 				'id' => $i['id'], 'title' => $i['title'], 'text' => $i['text'], 'url' => $i['url'], 'linkText' => $i['linkText'],
 				'buttonColor' => isset(self::BUTTON_COLORS[$i['buttonColor'] ?? '']) ? $i['buttonColor'] : 'violet',
 				'image' => static::imageSrc((string)($i['imageSrc'] ?? '')),
+				'art' => $n === 0 && $plan['layout'] !== self::LAYOUT_SLIDES ? Art::svg(Art::pick($i)) : '',
 				'video' => ($i['layout'] ?? '') === self::LAYOUT_VIDEO ? Media::video((string)($i['video'] ?? '')) : null,
-			], $plan['items']),
+			], array_values($plan['items']), array_keys(array_values($plan['items']))),
 		]);
 		$action = $json(Constants::SEEN_ACTION);
 
@@ -761,33 +767,11 @@ function body(a){
 	return t.intro.map(function(l){ return '<p>' + esc(l) + '</p>'; }).join('')
 		+ (t.points.length ? '<ul>' + t.points.map(function(l){ return '<li>' + esc(l) + '</li>'; }).join('') + '</ul>' : '');
 }
-var ART = '<svg viewBox="0 0 560 190" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">'
-	+ '<defs><linearGradient id="shefAnnAi" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#9b7bff"/><stop offset="1" stop-color="#5b3fd6"/></linearGradient>'
-	+ '<linearGradient id="shefAnnCall" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#4fd1a5"/><stop offset="1" stop-color="#1fa37a"/></linearGradient></defs>'
-	+ '<g fill="#fff" opacity=".85"><ellipse cx="70" cy="150" rx="34" ry="18"/><ellipse cx="96" cy="140" rx="24" ry="20"/><ellipse cx="490" cy="52" rx="28" ry="14"/><ellipse cx="510" cy="44" rx="18" ry="14"/></g>'
-	+ '<ellipse cx="280" cy="100" rx="140" ry="78" fill="#fff" opacity=".7"/>'
-	+ '<g><rect x="168" y="38" width="190" height="52" rx="12" fill="#fff" stroke="#ebe6fb"/><circle cx="194" cy="64" r="12" fill="url(#shefAnnCall)"/>'
-	+ '<g stroke="#fff" stroke-width="2.6" stroke-linecap="round"><path d="M187 61v6"/><path d="M191 57v14"/><path d="M195 59v10"/><path d="M199 55v18"/><path d="M203 61v6"/></g>'
-	+ '<rect x="216" y="54" width="70" height="7" rx="3.5" fill="#c9b8ff"/><rect x="216" y="68" width="118" height="6" rx="3" fill="#e6e1f5"/></g>'
-	+ '<g><rect x="208" y="104" width="190" height="52" rx="12" fill="#fff" stroke="#ebe6fb"/><circle cx="234" cy="130" r="12" fill="#d9ccff"/>'
-	+ '<rect x="256" y="120" width="58" height="7" rx="3.5" fill="#c9b8ff"/><rect x="256" y="134" width="104" height="6" rx="3" fill="#e6e1f5"/>'
-	+ '<path d="M334 117l4 4 8-9" stroke="#1fa37a" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/></g>'
-	+ '<circle cx="392" cy="150" r="30" fill="url(#shefAnnAi)"/><circle cx="392" cy="150" r="35" fill="none" stroke="#9b7bff" stroke-opacity=".25" stroke-width="6"/>'
-	+ '<path d="M392 134l4 10 10 4-10 4-4 10-4-10-10-4 10-4z" fill="#fff"/><path d="M406 132l1.6 3.8 3.8 1.6-3.8 1.6-1.6 3.8-1.6-3.8-3.8-1.6 3.8-1.6z" fill="#fff" opacity=".85"/>'
-	+ '</svg>';
-var CONF = '<svg viewBox="0 0 560 190" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">'
-	+ '<g opacity=".9"><rect x="40" y="30" width="10" height="18" rx="2" fill="#ff5752" transform="rotate(20 45 39)"/><rect x="120" y="140" width="10" height="18" rx="2" fill="#2fc6f6" transform="rotate(-25 125 149)"/>'
-	+ '<rect x="470" y="40" width="10" height="18" rx="2" fill="#ffa900" transform="rotate(35 475 49)"/><rect x="500" y="130" width="10" height="18" rx="2" fill="#9dcf00" transform="rotate(-15 505 139)"/>'
-	+ '<circle cx="90" cy="70" r="6" fill="#ffa900"/><circle cx="430" cy="150" r="6" fill="#ff5752"/><circle cx="200" cy="30" r="5" fill="#9dcf00"/><circle cx="370" cy="35" r="5" fill="#2fc6f6"/>'
-	+ '<circle cx="250" cy="165" r="4" fill="#8a6cff"/><circle cx="160" cy="110" r="4" fill="#ff5752"/><circle cx="400" cy="95" r="4" fill="#9dcf00"/></g>'
-	+ '<path d="M250 140l30-90 30 90z" fill="#ffd166"/><path d="M262 104h36M256 122h48" stroke="#ff8c42" stroke-width="6"/><circle cx="280" cy="48" r="9" fill="#ff5752"/>'
-	+ '<path d="M330 70c20-30 50-30 60-10M230 70c-20-30-50-30-60-10" stroke="#8a6cff" stroke-width="4" fill="none" stroke-linecap="round"/>'
-	+ '</svg>';
 var KIND = {
 	cosmos: {eye: '✦ Новое', cls: ''},
 	important: {eye: '! Важно', cls: ' --important', strict: true},
 	danger: {eye: '⚠ Внимание', cls: ' --danger'},
-	congrats: {eye: '🎉 Поздравляем', cls: ' --congrats', art: CONF},
+	congrats: {eye: '🎉 Поздравляем', cls: ' --congrats'},
 	video: {eye: '▶ Обучающее видео', cls: ' --video', ok: 'Посмотрел'}
 };
 var CSS = '.shef-ann-wrap{background:transparent!important;box-shadow:none!important}'
@@ -818,12 +802,12 @@ function media(a, k){
 	if(a.video && a.video.type === 'iframe') { return '<div class="shef-ann-video"><iframe src="' + esc(a.video.src) + '" allow="autoplay; encrypted-media; fullscreen; picture-in-picture" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe></div>'; }
 	if(a.video && a.video.type === 'mp4') { return '<div class="shef-ann-video"><video src="' + esc(a.video.src) + '" controls preload="metadata"></video></div>'; }
 	if(a.image) { return '<img src="' + esc(a.image) + '" alt="">'; }
-	return k.art || ART;
+	return a.art;
 }
 function cosmos(onDone){
 	var a = P.items[0];
 	var k = KIND[P.layout] || KIND.cosmos;
-	if(!document.getElementById('shef-ann-css')) { var st = document.createElement('style'); st.id = 'shef-ann-css'; st.textContent = CSS; document.head.appendChild(st); }
+	if(!document.getElementById('shef-ann-css')) { var st = document.createElement('style'); st.id = 'shef-ann-css'; st.textContent = CSS + P.css; document.head.appendChild(st); }
 	var root = document.createElement('div');
 	root.className = 'shef-ann' + k.cls;
 	root.innerHTML = '<div class="shef-ann-head"><div class="shef-ann-eye">' + esc(k.eye) + '</div>'
