@@ -135,15 +135,27 @@ class Announcement extends Controller
 		{
 			return null;
 		}
-		$own = OwnStore::load();
-		foreach($own as $item)
+		$image = 0;
+		$ok = $this->locked(static function() use($id, &$image): void
 		{
-			if($item['id'] === $id)
+			OwnStore::update(static function(array $own) use($id, &$image): array
 			{
-				$this->dropFile((int)$item['image']);
-			}
+				foreach($own as $item)
+				{
+					if($item['id'] === $id)
+					{
+						$image = (int)$item['image'];
+					}
+				}
+
+				return Announcements::remove($own, $id);
+			});
+		});
+		if(!$ok)
+		{
+			return null;
 		}
-		OwnStore::save(Announcements::remove($own, $id));
+		$this->dropFile($image);
 
 		return $this->rows();
 	}
@@ -276,7 +288,11 @@ class Announcement extends Controller
 
 			return null;
 		}
-		$list = Announcements::upsert(OwnStore::load(), $item);
+		$list = null;
+		if(!$this->locked(static function() use($item, &$list): void { $list = OwnStore::update(static fn(array $own): ?array => Announcements::upsert($own, $item)); }))
+		{
+			return null;
+		}
 		if($list === null)
 		{
 			$this->addError(new Error('Не сохранено: в своём списке не больше '.Announcements::MAX_ITEMS.' объявлений.', 'full'));
@@ -287,9 +303,25 @@ class Announcement extends Controller
 		{
 			$this->dropFile((int)($old['image'] ?? 0));
 		}
-		OwnStore::save($list);
 
 		return $this->rows();
+	}
+
+	/** Правка списка под блокировкой; занят — ошибка в окно, false. */
+	private function locked(callable $write): bool
+	{
+		try
+		{
+			$write();
+
+			return true;
+		}
+		catch(\RuntimeException)
+		{
+			$this->addError(new Error('Список сейчас правится — повторите через несколько секунд.', 'busy'));
+
+			return false;
+		}
 	}
 
 	/** @return array{rows: list<array>, conflicts: list<string>} */

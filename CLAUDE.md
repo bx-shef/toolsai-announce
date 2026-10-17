@@ -31,6 +31,7 @@
 | действия страницы списка (ajax) | `lib/controller/announcement.php`, свой список — `lib/announce/ownstore.php` |
 | окно выбора мест (ui.entity-selector) | `lib/integration/ui/entityselector/placeprovider.php`, регистрация — `.settings.php` `ui.entity-selector` |
 | выбор тестовых (старое «1,15» → JSON при показе) | `lib/main/testusersoption.php`, чистая часть — `Announcements::testUsersSelectorValue()` |
+| инструменты MCP (1.6.0): манифест, REST `shef.announce.*` | `lib/announce/mcptools.php` (чистая), методы — `lib/integration/rest/service.php`, глава `docs/guide/04-mcp.md` |
 | страница списка | `admin/list.php` через заглушку `Main\AdminPage` (скрипт — в самой странице); строки, бейджи и меню «…» — `lib/announce/listview.php` |
 
 ## Решения, которые не «упрощать»
@@ -58,6 +59,9 @@
   дают прежнее поведение (`places` `/crm/`, повтор «один раз»). Дату
   публикации старым даёт журнал первого появления — иначе новым-старым
   сотрудникам пропали бы непросмотренные.
+* **Аудиторию из MCP выбирает человек**: `audience` у `announce_create`
+  обязательна, описание велит модели спросить «черновик или сразу». Право
+  модуля — в каждом REST-методе, не только в манифесте.
 * **Видео — только белый список** (`Media::VIDEO_HOSTS`), адрес плеера
   собирается из id; картинка — только файл этого модуля (`MODULE_ID` в CFile).
 * Страница в `/bitrix/admin` **пишется**, а не копируется (`Main\AdminPage`):
@@ -81,4 +85,5 @@
 | `adminpage_test.php` | заглушка в /bitrix/admin: путь, своя/чужая |
 | `listview_test.php` | строки таблицы: бейджи, меню «…», места; название [SH], место пункта меню |
 | `art_test.php` | картинки окна: каждая своя, выбор по виду, поле art, SVG в данных окна |
+| `mcp_test.php` | манифест по праву, аудитория — спросить человека, REST: создать, изменить своё, выключить |
 | `autoload_test.php` | класс лежит там, где его ищет ядро |

@@ -137,6 +137,10 @@ $c->saveAction(['id' => 'own-img', 'title' => 'С картинкой', 'image' =
 $c = $make('W');
 $c->saveAction(['id' => 'own-img', 'title' => 'Без картинки', 'image' => 0]);
 Check::same('замена своей картинки — свой файл удаляется', \CFile::$deleted, [56]);
+$make('W')->saveAction(['id' => 'own-img', 'title' => 'Снова с картинкой', 'image' => 56]);
+\CFile::$deleted = [];
+$make('W')->deleteAction('own-img');
+Check::same('удаление своего — и его файл', \CFile::$deleted, [56]);
 $c = $make('W');
 Check::same('объявлению модуля картинку не задать', \Shef\ToolsAiAnnounce\Announce\Announcements::merge([], [['moduleId' => 'm', 'announcements' => [['id' => 'x', 'title' => 'X', 'image' => 55]]]])['items'][0]['image'], 0);
 
