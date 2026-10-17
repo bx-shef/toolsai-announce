@@ -24,7 +24,7 @@
 | показ на странице CRM (main:OnEpilog) | `lib/internals/integration/main/eventhandler/onepilogeventhandler.php` |
 | отметка «видел» (ajax) | `lib/controller/banner.php`, хранилище — `lib/announce/seenstore.php` |
 | выбор тестовых (старое «1,15» → JSON при показе) | `lib/main/testusersoption.php`, чистая часть — `Announcements::testUsersSelectorValue()` |
-| страница списка | `admin/list.php` через заглушку `Main\AdminPage` |
+| страница списка | `admin/list.php` через заглушку `Main\AdminPage`; строки таблицы и бейджи — `lib/announce/listview.php` |
 
 ## Решения, которые не «упрощать»
 
@@ -54,4 +54,5 @@
 | `seen_test.php` | отметки (старые shef.toolsai не читаются), действие `seenAction`, повторная установка и удаление подписок |
 | `settings_test.php` | зависимости, подписки установщика, удаление (savedata), контроллер, коды настроек |
 | `adminpage_test.php` | заглушка в /bitrix/admin: путь, своя/чужая |
+| `listview_test.php` | строки таблицы: бейджи, кнопки; название [SH], место пункта меню |
 | `autoload_test.php` | класс лежит там, где его ищет ядро |
