@@ -1,5 +1,16 @@
 # История изменений
 
+## 1.5.0 — 2026-10-17
+
+* **Оповещения из ИИ-клиента через MCP** — REST-методы в области
+  `shef_announce` и манифест `shef.announce.mcp.tools` для сервера toolsai-mcp:
+  `announce_list`, `announce_create`, `announce_update` (только своё),
+  `announce_disable`. При создании модель спрашивает человека: черновик на
+  тестовых или сразу сотрудникам. Право модуля — в каждом методе.
+  Подписка `rest:OnRestServiceBuildDescription` — в `installEvents`, после
+  обновления копированием её ставит `Main\Maintenance`. Описание —
+  `docs/guide/04-mcp.md`, тест — `tests/mcp_test.php`.
+
 ## 1.4.2 — 2026-10-17
 
 * **Подсказки в окне правки объявления** — под полями «Вид», «Кому»,

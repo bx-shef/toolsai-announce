@@ -51,7 +51,7 @@ EventManager::$registered = [];
 Option::set(Constants::MODULE_ID, Maintenance::OPTION_VERSION, '1.4.0');
 Maintenance::reset();
 Maintenance::ensureOnce();
-Check::same('после обновления — обе подписки', array_map(static fn(array $r): string => $r[0].':'.$r[1], EventManager::$registered), ['main:OnEpilog', 'shef.toolsai:OnViewSettingsMenuBuild']);
+Check::same('после обновления — все подписки, и REST', array_map(static fn(array $r): string => $r[0].':'.$r[1], EventManager::$registered), ['main:OnEpilog', 'shef.toolsai:OnViewSettingsMenuBuild', 'rest:OnRestServiceBuildDescription']);
 Check::same('версия записана', Option::get(Constants::MODULE_ID, Maintenance::OPTION_VERSION), Maintenance::moduleVersion($root));
 EventManager::$registered = [];
 Maintenance::reset();

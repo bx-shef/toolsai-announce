@@ -11,7 +11,8 @@
  * * registerAutoLoadClasses, registerNamespace -> пусто: свои классы ядро
  *   находит по соглашению (lib/ строчными), чужих библиотек нет
  * * installEvents -> постоянные подписки: регистрирует InstallEvents()
- *   установщика, снимает парный UnInstallEvents()
+ *   установщика, снимает парный UnInstallEvents(); после обновления
+ *   копированием их ставит Main\Maintenance
  * * installDir -> пусто: в /bitrix/admin модуль не копирует, а ПИШЕТ одну
  *   заглушку страницы списка (Main\AdminPage)
  * * controllers -> ajax: shef:toolsaiannounce.banner.seen ->
@@ -71,6 +72,19 @@ return [
 					'module' => 'shef.toolsaiannounce',
 					'class' => '\\Shef\\ToolsAiAnnounce\\Internals\\Integration\\ToolsAi\\EventHandler\\OnViewSettingsMenuBuildEventHandler',
 					'function' => 'handle',
+					'sort' => 100,
+				],
+			],
+			// REST-методы оповещений для MCP-сервера toolsai-mcp (1.5.0): область
+			// shef_announce, манифест shef.announce.mcp.tools. Событие rest —
+			// старого вида (GetModuleEvents), как у calendar: isCompatible.
+			[
+				'isCompatible' => true,
+				'from' => ['module' => 'rest', 'event' => 'OnRestServiceBuildDescription'],
+				'to' => [
+					'module' => 'shef.toolsaiannounce',
+					'class' => '\\Shef\\ToolsAiAnnounce\\Integration\\Rest\\Service',
+					'function' => 'onRestServiceBuildDescription',
 					'sort' => 100,
 				],
 			],
