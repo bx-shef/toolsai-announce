@@ -30,7 +30,7 @@ foreach(['build', 'meeting', 'library'] as $code)
 {
 	Check::same($code.': анимирована', preg_match('/class="sa-(dozer|bar|page)/', Art::svg($code)) === 1, true);
 }
-Check::same('анимации стоят при «уменьшить движение»', str_contains(Art::css(), 'prefers-reduced-motion:reduce'), true);
+Check::same('анимации стоят при «уменьшить движение»', str_contains(Art::css(), '@media (prefers-reduced-motion:reduce){.sa *{animation:none!important'), true);
 
 Check::group('выбор');
 Check::same('по виду окна', array_map(static fn(string $l): string => Art::pick(['layout' => $l]), ['cosmos', 'important', 'danger', 'congrats', 'video']), ['news', 'bell', 'alert', 'congrats', 'news']);
@@ -45,5 +45,10 @@ $item = A::normalize(['id' => 'a', 'title' => 'T', 'art' => 'meeting']);
 $js = A::script(['layout' => 'cosmos', 'items' => [$item]]);
 Check::same('картинка в данных, теги экранированы', str_contains($js, 'sa-meeting') && !str_contains($js, '<svg'), true);
 Check::same('стили анимаций подключены', str_contains($js, 'CSS + P.css') && str_contains($js, 'saDrive'), true);
+
+$slides = A::script(['layout' => 'slides', 'items' => [$item, $item]]);
+Check::same('слайдам картинка и стили не нужны', [str_contains($slides, 'sa-meeting'), str_contains($slides, 'saDrive')], [false, false]);
+$two = A::script(['layout' => 'cosmos', 'items' => [$item, A::normalize(['id' => 'b', 'title' => 'B', 'art' => 'library'])]]);
+Check::same('картинка — только первому объявлению окна', [str_contains($two, 'sa-meeting'), str_contains($two, 'sa-library')], [true, false]);
 
 Check::finish();

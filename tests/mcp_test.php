@@ -18,6 +18,24 @@ namespace Bitrix\Rest
 	}
 }
 
+namespace Bitrix\Main
+{
+	/** Соединение на заглушке: журнал блокировок. */
+	class Application
+	{
+		public static array $locks = [];
+		public static bool $busy = false;
+
+		public static function getConnection(): object
+		{
+			return new class {
+				public function lock(string $name, int $timeout = 0): bool { Application::$locks[] = 'lock:'.$name; return !Application::$busy; }
+				public function unlock(string $name): bool { Application::$locks[] = 'unlock:'.$name; return true; }
+			};
+		}
+	}
+}
+
 namespace
 {
 	class CRestServer
@@ -43,6 +61,7 @@ use Bitrix\Rest\RestException;
 use Shef\ToolsAiAnnounce\Announce\McpTools;
 use Shef\ToolsAiAnnounce\Announce\OwnStore;
 use Shef\ToolsAiAnnounce\Integration\Rest\Service;
+use Shef\ToolsAiAnnounce\Main\Constants;
 
 /** Service с подставным правом модуля. */
 class RestAs extends Service
@@ -113,6 +132,7 @@ $r = $call('create', ['title' => 'Черновик', 'audience' => 'test', 'text
 $id = $r['ok']['id'] ?? '';
 Check::same('создано черновиком', [$r['ok']['audience'] ?? null, $r['ok']['active'] ?? null, $r['ok']['source'] ?? null, $r['ok']['places'] ?? null], ['test', true, 'own', ['/crm/deal/']]);
 Check::same('ссылка на страницу списка', str_contains($r['ok']['listUrl'] ?? '', 'shef_toolsaiannounce_list.php'), true);
+Check::same('запись — под блокировкой БД', array_slice(\Bitrix\Main\Application::$locks, -2), ['lock:shef_toolsaiannounce_list', 'unlock:shef_toolsaiannounce_list']);
 Check::same('в своём списке, с датой публикации', [count(OwnStore::load()), OwnStore::load()[0]['published'] > 0], [1, true]);
 $r = $call('update', ['id' => $id, 'audience' => 'all']);
 Check::same('изменено: всем, заголовок прежний', [$r['ok']['audience'] ?? null, $r['ok']['title'] ?? null], ['all', 'Черновик']);
@@ -120,10 +140,36 @@ Check::same('модульное не меняется', $call('update', ['id' =>
 Check::same('нет такого — Not found', $call('update', ['id' => 'nope', 'title' => 'X'])['message'] ?? '', 'Not found');
 Check::same('плохой id — ошибка', $call('disable', ['id' => 'Bad id!'])['error'] ?? '', 'INVALID_ARG_VALUE');
 $r = $call('disable', ['id' => 'mod-1']);
-Check::same('модульное выключено своей копией', [$r['ok']['active'] ?? null, count(OwnStore::load())], [false, 2]);
+Check::same('модульное выключено своей копией', [$r['ok']['active'] ?? null, $r['ok']['source'] ?? null, count(OwnStore::load())], [false, 'own', 2]);
+Check::same('без аудитории (вызов мимо схемы MCP) — черновик на тестовых', $call('create', ['title' => 'Без аудитории'])['ok']['audience'] ?? null, 'test');
 Check::same('выключить своё', $call('disable', ['id' => $id])['ok']['active'] ?? null, false);
 RestAs::$right = 'R';
 Check::same('право — в каждом методе, не только в манифесте', $call('disable', ['id' => $id])['error'] ?? '', 'ACCESS_DENIED');
+RestAs::$right = 'W';
+\Bitrix\Main\Application::$busy = true;
+$before = OwnStore::load();
+Check::same('блокировка занята — BUSY, без записи', [$call('create', ['title' => 'T', 'audience' => 'test'])['error'] ?? '', OwnStore::load()], ['BUSY', $before]);
+\Bitrix\Main\Application::$busy = false;
+
+// старое своё без даты публикации: дата — из журнала первого появления, не «сейчас»
+Option::set(Constants::MODULE_ID, Constants::OPTION_LIST, (string)json_encode([['id' => 'old-1', 'title' => 'Старое', 'active' => true, 'audience' => 'all']]));
+Option::set(Constants::MODULE_ID, Constants::OPTION_FIRST_SEEN, (string)json_encode(['old-1' => 1000]));
+Cache::$store = [];
+$call('update', ['id' => 'old-1', 'title' => 'Старое, поправлено']);
+Check::same('правка старого — дата из журнала', OwnStore::load()[0]['published'], 1000);
+
+// объявление, которое не проходит проверку формы, всё равно выключается
+Option::set(Constants::MODULE_ID, Constants::OPTION_LIST, (string)json_encode([['id' => 'vid-1', 'title' => 'Видео без ссылки', 'active' => true, 'layout' => 'video']]));
+Cache::$store = [];
+Check::same('выключение — без проверки формы', $call('disable', ['id' => 'vid-1'])['ok']['active'] ?? null, false);
+Check::same('правка его же — с проверкой', $call('update', ['id' => 'vid-1', 'title' => 'X'])['error'] ?? '', 'INVALID_ARG_VALUE');
+
+// правка поверх списка в БД, а не прочитанного раньше
+$call('update', ['id' => 'vid-1', 'video' => 'https://youtu.be/dQw4w9WgXcQ']);
+Check::same('правка собрана внутри блокировки', OwnStore::load()[0]['video'], 'https://youtu.be/dQw4w9WgXcQ');
+
+RestAs::$right = 'R';
+Check::same('изменить с R — отказ', $call('update', ['id' => 'vid-1', 'title' => 'X'])['error'] ?? '', 'ACCESS_DENIED');
 
 Check::finish();
 }

@@ -739,14 +739,15 @@ final class Announcements
 		$json = static fn(mixed $v): string => (string)json_encode($v, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT);
 		$data = $json([
 			'layout' => $plan['layout'],
-			'css' => Art::css(),
-			'items' => array_map(static fn(array $i): array => [
+			// картинка нужна только окну (не слайдам) и только первому объявлению
+			'css' => $plan['layout'] !== self::LAYOUT_SLIDES ? Art::css() : '',
+			'items' => array_map(static fn(array $i, int $n): array => [
 				'id' => $i['id'], 'title' => $i['title'], 'text' => $i['text'], 'url' => $i['url'], 'linkText' => $i['linkText'],
 				'buttonColor' => isset(self::BUTTON_COLORS[$i['buttonColor'] ?? '']) ? $i['buttonColor'] : 'violet',
 				'image' => static::imageSrc((string)($i['imageSrc'] ?? '')),
-				'art' => Art::svg(Art::pick($i)),
+				'art' => $n === 0 && $plan['layout'] !== self::LAYOUT_SLIDES ? Art::svg(Art::pick($i)) : '',
 				'video' => ($i['layout'] ?? '') === self::LAYOUT_VIDEO ? Media::video((string)($i['video'] ?? '')) : null,
-			], $plan['items']),
+			], array_values($plan['items']), array_keys(array_values($plan['items']))),
 		]);
 		$action = $json(Constants::SEEN_ACTION);
 

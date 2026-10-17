@@ -56,65 +56,108 @@ class Service
 		$fields = McpTools::fields($query, null);
 		$fields['id'] = 'n-'.date('Ymd').'-'.bin2hex(random_bytes(4));
 
-		return static::store($fields, null);
+		return static::store(static fn(array $own): array => [$fields, null]);
 	}
 
 	public static function update(array $query, $nav = null, $server = null): array
 	{
 		static::need('W');
 		$id = static::id($query);
-		$old = null;
-		foreach(OwnStore::load() as $item)
-		{
-			if($item['id'] === $id)
-			{
-				$old = $item;
-			}
-		}
-		if($old === null)
-		{
-			if(static::find($id) !== null)
-			{
-				throw new RestException('Оповещение задано модулем: менять можно только созданные на портале (source own). Выключить — announce_disable.', 'ACCESS_DENIED', \CRestServer::STATUS_FORBIDDEN);
-			}
-			throw new RestException('Not found', 'NOT_FOUND', \CRestServer::STATUS_NOT_FOUND);
-		}
+		// дата публикации старых своих — из журнала первого появления (Collector)
+		$merged = static::find($id);
 
-		return static::store(McpTools::fields($query, $old), $old);
+		return static::store(static function(array $own) use($id, $merged, $query): array
+		{
+			$old = static::ownItem($own, $id);
+			if($old === null)
+			{
+				if($merged !== null)
+				{
+					throw new RestException('Оповещение задано модулем: менять можно только созданные на портале (source own). Выключить — announce_disable.', 'ACCESS_DENIED', \CRestServer::STATUS_FORBIDDEN);
+				}
+				throw new RestException('Not found', 'NOT_FOUND', \CRestServer::STATUS_NOT_FOUND);
+			}
+			$old['published'] = max((int)($old['published'] ?? 0), (int)($merged['published'] ?? 0));
+
+			return [McpTools::fields($query, $old), $old];
+		});
 	}
 
+	/** Выключить; как toggle страницы списка — без проверки формы, только приведение. */
 	public static function disable(array $query, $nav = null, $server = null): array
 	{
 		static::need('W');
-		$old = static::find(static::id($query));
-		if($old === null)
+		$id = static::id($query);
+		$merged = static::find($id);
+		if($merged === null)
 		{
 			throw new RestException('Not found', 'NOT_FOUND', \CRestServer::STATUS_NOT_FOUND);
 		}
-		$item = Announcements::stored($old);
-		$item['active'] = false;
 
-		return static::store($item, $old);
+		return static::store(static function(array $own) use($id, $merged): array
+		{
+			$old = static::ownItem($own, $id) ?? $merged;
+			$old['published'] = max((int)($old['published'] ?? 0), (int)($merged['published'] ?? 0));
+			$item = Announcements::stored($old);
+			$item['active'] = false;
+
+			return [$item, $old];
+		}, false);
 	}
 
-	/** Проверить, привести и записать в свой список; ответ — id, включено ли и ссылка. */
-	private static function store(array $fields, ?array $old): array
+	/**
+	 * Записать в свой список под блокировкой (OwnStore::update()): $build
+	 * получает свежий список и отдаёт [поля, прежнее объявление или null] —
+	 * правка собирается поверх того, что в БД сейчас, а не что прочли раньше.
+	 * Ответ — id, включено ли и ссылка.
+	 *
+	 * @param callable(list<array>): array{0: array, 1: ?array} $build
+	 */
+	private static function store(callable $build, bool $check = true): array
 	{
-		$errors = Announcements::validate($fields);
-		if($errors !== [])
+		$saved = null;
+		try
 		{
-			throw new RestException(implode(' ', $errors), 'INVALID_ARG_VALUE', \CRestServer::STATUS_WRONG_REQUEST);
-		}
-		$fields['published'] = Announcements::publishedOnSave($fields, $old, time());
-		$item = Announcements::normalize($fields);
-		$list = $item !== null ? Announcements::upsert(OwnStore::load(), $item) : null;
-		if($list === null)
-		{
-			throw new RestException('Не сохранено: в своём списке не больше '.Announcements::MAX_ITEMS.' оповещений.', 'LIMIT', \CRestServer::STATUS_WRONG_REQUEST);
-		}
-		OwnStore::save($list);
+			OwnStore::update(static function(array $own) use($build, $check, &$saved): array
+			{
+				[$fields, $old] = $build($own);
+				$errors = $check ? Announcements::validate($fields) : [];
+				if($errors !== [])
+				{
+					throw new RestException(implode(' ', $errors), 'INVALID_ARG_VALUE', \CRestServer::STATUS_WRONG_REQUEST);
+				}
+				$fields['published'] = Announcements::publishedOnSave($fields, $old, time());
+				$item = Announcements::normalize($fields);
+				$list = $item !== null ? Announcements::upsert($own, $item) : null;
+				if($list === null)
+				{
+					throw new RestException('Не сохранено: в своём списке не больше '.Announcements::MAX_ITEMS.' оповещений.', 'LIMIT', \CRestServer::STATUS_WRONG_REQUEST);
+				}
+				$saved = $item;
 
-		return McpTools::row($item) + ['listUrl' => Constants::listUrl()];
+				return $list;
+			});
+		}
+		catch(\RuntimeException)
+		{
+			throw new RestException('Список оповещений сейчас правится, повторите через несколько секунд.', 'BUSY', \CRestServer::STATUS_WRONG_REQUEST);
+		}
+
+		return McpTools::row($saved) + ['listUrl' => Constants::listUrl()];
+	}
+
+	/** Своё объявление по id из списка. */
+	private static function ownItem(array $own, string $id): ?array
+	{
+		foreach($own as $item)
+		{
+			if($item['id'] === $id)
+			{
+				return $item;
+			}
+		}
+
+		return null;
 	}
 
 	private static function id(array $query): string
