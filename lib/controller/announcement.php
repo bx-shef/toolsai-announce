@@ -107,25 +107,75 @@ class Announcement extends Controller
 		return $this->store(Announcements::normalize($fields), $old);
 	}
 
-	/** Включить или выключить. */
+	/**
+	 * Включить или выключить. Флажок переворачивается у объявления из списка в
+	 * БД под блокировкой (OwnStore::update()), а не у прочитанного до неё:
+	 * правка из MCP между чтением и записью не теряется, удалённое своё не
+	 * воскресает. Модульное без своей копии — копией из итогового списка.
+	 */
 	public function toggleAction(string $id): ?array
 	{
 		if(!$this->can('W') || !$this->validId($id))
 		{
 			return null;
 		}
-		$old = $this->find($id);
-		if($old === null)
+		$merged = $this->find($id);
+		if($merged === null)
 		{
 			$this->addError(new Error('Объявление не найдено. Обновите страницу.', 'not_found'));
 
 			return null;
 		}
-		$item = Announcements::stored($old);
-		$item['active'] = empty($old['active']);
-		$item['published'] = Announcements::publishedOnSave($item, $old, time());
+		$gone = false;
+		$full = false;
+		$ok = $this->locked(static function() use($id, $merged, &$gone, &$full): void
+		{
+			OwnStore::update(static function(array $own) use($id, $merged, &$gone, &$full): ?array
+			{
+				$old = null;
+				foreach($own as $item)
+				{
+					if($item['id'] === $id)
+					{
+						$old = $item;
+					}
+				}
+				if($old === null && ($merged['source'] ?? '') === Announcements::SOURCE_SETTINGS)
+				{
+					$gone = true;
 
-		return $this->store(Announcements::normalize($item), $old);
+					return null;
+				}
+				$old ??= $merged;
+				$old['published'] = max((int)($old['published'] ?? 0), (int)($merged['published'] ?? 0));
+				$item = Announcements::stored($old);
+				$item['active'] = empty($old['active']);
+				$item['published'] = Announcements::publishedOnSave($item, $old, time());
+				$item = Announcements::normalize($item);
+				$list = $item !== null ? Announcements::upsert($own, $item) : null;
+				$full = $list === null;
+
+				return $list;
+			});
+		});
+		if(!$ok)
+		{
+			return null;
+		}
+		if($gone)
+		{
+			$this->addError(new Error('Объявление не найдено. Обновите страницу.', 'not_found'));
+
+			return null;
+		}
+		if($full)
+		{
+			$this->addError(new Error('Не сохранено: в своём списке не больше '.Announcements::MAX_ITEMS.' объявлений.', 'full'));
+
+			return null;
+		}
+
+		return $this->rows();
 	}
 
 	/** Удалить своё («Вернуть как в модуле» — то же для копии модульного). */

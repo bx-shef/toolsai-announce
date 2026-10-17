@@ -18,35 +18,6 @@ namespace Bitrix\Rest
 	}
 }
 
-namespace Bitrix\Main
-{
-	/** Соединение на заглушке: журнал блокировок. */
-	class Application
-	{
-		public static array $locks = [];
-		public static bool $busy = false;
-		public static array $queries = [];
-		/** Значение в «БД», если отличается от кеша хита. */
-		public static ?string $db = null;
-
-		public static function getConnection(): object
-		{
-			return new class {
-				public function lock(string $name, int $timeout = 0): bool { Application::$locks[] = 'lock:'.$name; return !Application::$busy; }
-				public function unlock(string $name): bool { Application::$locks[] = 'unlock:'.$name; return true; }
-				public function getSqlHelper(): object { return new class { public function forSql(string $v): string { return addslashes($v); } }; }
-				/** b_option: общее значение — из «БД» (Option::$db), не из кеша хита (Option::$values). */
-				public function query(string $sql): object
-				{
-					Application::$queries[] = $sql;
-					$v = Application::$db ?? (\Bitrix\Main\Config\Option::$values['shef.toolsaiannounce']['ANNOUNCE_list'] ?? null);
-					return new class($v) { public function __construct(private $v) {} public function fetch() { return $this->v === null ? false : ['VALUE' => $this->v]; } };
-				}
-			};
-		}
-	}
-}
-
 namespace
 {
 	class CRestServer

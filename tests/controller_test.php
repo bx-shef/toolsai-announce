@@ -124,6 +124,27 @@ Check::same('нет такого — ошибка', [$c->toggleAction('nope'), $
 $c = $make('W');
 Check::same('плохой id — ошибка', [$c->deleteAction('<x>'), count($c->errors)], [null, 1]);
 
+Check::group('включить/выключить — по списку в БД, не по прочитанному в хите');
+// Application::$db — что лежит в b_option сейчас; Option::get() — копия, прочитанная в этом хите раньше
+$make('W')->saveAction(['id' => 'race-1', 'title' => 'Гонка', 'text' => 'старый', 'active' => 'Y']);
+$db = OwnStore::load();
+foreach($db as $i => $item)
+{
+	if($item['id'] === 'race-1')
+	{
+		$db[$i]['text'] = 'новый из MCP';
+	}
+}
+\Bitrix\Main\Application::$db = (string)json_encode($db, JSON_UNESCAPED_UNICODE);
+$make('W')->toggleAction('race-1');
+\Bitrix\Main\Application::$db = null;
+$race = array_values(array_filter(OwnStore::load(), static fn(array $i): bool => $i['id'] === 'race-1'))[0];
+Check::same('правка другого процесса не потеряна, флажок перевёрнут', [$race['text'], $race['active']], ['новый из MCP', false]);
+\Bitrix\Main\Application::$db = (string)json_encode(array_values(array_filter(OwnStore::load(), static fn(array $i): bool => $i['id'] !== 'race-1')), JSON_UNESCAPED_UNICODE);
+$c = $make('W');
+Check::same('удалённое другим процессом не воскресает', [$c->toggleAction('race-1'), $messages($c)], [null, ['Объявление не найдено. Обновите страницу.']]);
+\Bitrix\Main\Application::$db = null;
+
 Check::group('картинка: удаление только своего файла');
 \CFile::$files = [55 => 'other.module', 56 => Constants::MODULE_ID];
 \CFile::$deleted = [];
