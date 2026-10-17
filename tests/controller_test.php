@@ -124,6 +124,50 @@ Check::same('нет такого — ошибка', [$c->toggleAction('nope'), $
 $c = $make('W');
 Check::same('плохой id — ошибка', [$c->deleteAction('<x>'), count($c->errors)], [null, 1]);
 
+Check::group('включить/выключить — по списку в БД, не по прочитанному в хите');
+// Application::$db — что лежит в b_option сейчас; Option::get() — копия, прочитанная в этом хите раньше
+$make('W')->saveAction(['id' => 'race-1', 'title' => 'Гонка', 'text' => 'старый', 'active' => 'Y']);
+$db = OwnStore::load();
+foreach($db as $i => $item)
+{
+	if($item['id'] === 'race-1')
+	{
+		$db[$i]['text'] = 'новый из MCP';
+	}
+}
+\Bitrix\Main\Application::$db = (string)json_encode($db, JSON_UNESCAPED_UNICODE);
+$make('W')->toggleAction('race-1');
+\Bitrix\Main\Application::$db = null;
+$race = array_values(array_filter(OwnStore::load(), static fn(array $i): bool => $i['id'] === 'race-1'))[0];
+Check::same('правка другого процесса не потеряна, флажок перевёрнут', [$race['text'], $race['active']], ['новый из MCP', false]);
+\Bitrix\Main\Application::$db = (string)json_encode(array_values(array_filter(OwnStore::load(), static fn(array $i): bool => $i['id'] !== 'race-1')), JSON_UNESCAPED_UNICODE);
+$c = $make('W');
+Check::same('удалённое другим процессом не воскресает', [$c->toggleAction('race-1'), $messages($c)], [null, ['Объявление не найдено. Обновите страницу.']]);
+\Bitrix\Main\Application::$db = null;
+
+$c = $make('W');
+\Bitrix\Main\Application::$busy = true;
+Check::same('блокировка занята — ошибка «повторите», без записи', [$c->toggleAction('mod-1'), $messages($c)], [null, ['Список сейчас правится — повторите через несколько секунд.']]);
+\Bitrix\Main\Application::$busy = false;
+
+// своё старое без даты: выключение не теряет дату из журнала первого появления
+$keep = Option::get(Constants::MODULE_ID, Constants::OPTION_LIST);
+Option::set(Constants::MODULE_ID, Constants::OPTION_LIST, (string)json_encode([['id' => 'old-pub', 'title' => 'Старое', 'active' => true, 'audience' => 'all']]));
+Option::set(Constants::MODULE_ID, Constants::OPTION_FIRST_SEEN, (string)json_encode(['old-pub' => 1000]));
+$make('W')->toggleAction('old-pub');
+Check::same('дата публикации — из журнала, не сброшена', [OwnStore::load()[0]['published'], OwnStore::load()[0]['active']], [1000, false]);
+
+// свой список полон: модульное без копии не выключить — ошибка, а не тихий успех
+$fullList = [];
+for($i = 0; $i < \Shef\ToolsAiAnnounce\Announce\Announcements::MAX_ITEMS; $i++)
+{
+	$fullList[] = ['id' => 'f-'.$i, 'title' => 'F'.$i];
+}
+Option::set(Constants::MODULE_ID, Constants::OPTION_LIST, (string)json_encode($fullList));
+$c = $make('W');
+Check::same('список полон — ошибка', [$c->toggleAction('mod-1'), $messages($c)], [null, ['Не сохранено: в своём списке не больше 20 объявлений.']]);
+Option::set(Constants::MODULE_ID, Constants::OPTION_LIST, (string)$keep);
+
 Check::group('картинка: удаление только своего файла');
 \CFile::$files = [55 => 'other.module', 56 => Constants::MODULE_ID];
 \CFile::$deleted = [];
