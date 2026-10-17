@@ -229,6 +229,47 @@ final class Announcements
 	}
 
 	/**
+	 * Значение ANNOUNCE_testusers в формате выбора сотрудников (shef.options
+	 * Department). JSON-список отдаётся как есть; старое «ID через запятую»
+	 * переводится в JSON — так выбор показывает ровно тех, кому реально идут
+	 * тестовые объявления.
+	 *
+	 * @param array<int, string> $titles имена по ID; нет имени — «#ID»
+	 */
+	public static function testUsersSelectorValue(?string $value, array $titles = []): string
+	{
+		$value = trim((string)$value);
+		if($value === '' || str_starts_with($value, '['))
+		{
+			return $value === '' ? '[]' : $value;
+		}
+		$rows = [];
+		foreach(static::testUsers($value) as $id)
+		{
+			$rows[] = static::testUserRow($id, (string)($titles[$id] ?? ''));
+		}
+
+		return (string)json_encode($rows, JSON_UNESCAPED_UNICODE);
+	}
+
+	/**
+	 * Одна запись выбора сотрудников в формате shef.options Department.
+	 *
+	 * @return array{id: int, title: string, entityId: string, entityType: string, link: string, avatar: string}
+	 */
+	public static function testUserRow(int $id, string $title = ''): array
+	{
+		return [
+			'id' => $id,
+			'title' => $title !== '' ? $title : '#'.$id,
+			'entityId' => 'user',
+			'entityType' => 'employee',
+			'link' => '',
+			'avatar' => '',
+		];
+	}
+
+	/**
 	 * Первое активное непросмотренное объявление, доступное пользователю.
 	 *
 	 * @param list<array> $items

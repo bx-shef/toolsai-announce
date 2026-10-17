@@ -40,6 +40,13 @@ Check::same('тестовые: экранированный JSON', A::testUsers(
 Check::same('тестовые: пустой JSON', A::testUsers('[]'), []);
 Check::same('тестовые: битый JSON — никого', A::testUsers('[{"id":'), []);
 Check::same('тестовые: пусто', A::testUsers(''), []);
+Check::same('выбор: старое «1,15» → JSON Department', json_decode(A::testUsersSelectorValue('1,15', [1 => 'Админ']), true), [A::testUserRow(1, 'Админ'), A::testUserRow(15)]);
+Check::same('выбор: после перевода разбор тот же', A::testUsers(A::testUsersSelectorValue('1, 15')), [1, 15]);
+Check::same('выбор: JSON как есть', A::testUsersSelectorValue('[{"id":3,"entityId":"user"}]'), '[{"id":3,"entityId":"user"}]');
+Check::same('выбор: пусто → []', A::testUsersSelectorValue(''), '[]');
+require_once __DIR__.'/../default_option.php';
+Check::same('по умолчанию — администратор в JSON Department', A::testUsers($shef_toolsaiannounce_default_option['ANNOUNCE_testusers']), [1]);
+Check::same('по умолчанию — запись выбора', json_decode($shef_toolsaiannounce_default_option['ANNOUNCE_testusers'], true), [A::testUserRow(1)]);
 $items = [
 	['id' => 't', 'title' => 'T', 'audience' => 'test', 'active' => true],
 	['id' => 'off', 'title' => 'O', 'audience' => 'all', 'active' => false],

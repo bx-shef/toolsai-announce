@@ -3,6 +3,7 @@
 use Bitrix\Main\Localization\Loc;
 use Shef\Options\Main\Options;
 use Shef\ToolsAiAnnounce\Main\Constants;
+use Shef\ToolsAiAnnounce\Main\TestUsersOption;
 
 /**
  * Опции для страницы настроек (страницу рисует options.php из shef.options).
@@ -15,7 +16,8 @@ use Shef\ToolsAiAnnounce\Main\Constants;
  * (ANNOUNCE_list, JSON) правится не здесь, а на своей странице — ссылка в
  * первой строке вкладки. Тестовые пользователи — штатный выбор сотрудников
  * (ui.entity-selector), значение — JSON-список; старое «1,15» тоже читается
- * (Announcements::testUsers).
+ * (Announcements::testUsers) и в выборе показывается переведённым в JSON
+ * (Main\TestUsersOption).
  */
 
 $response = ShOptionsConfig::getInstance(
@@ -41,7 +43,7 @@ $options->addTab(
 				->setType(Options\TypeUIAlert::Note)
 		)
 		->addOption(
-			(new Options\Department('testusers'))
+			(new TestUsersOption('testusers'))
 				->setOnlyUsers(true)
 				->setNotUseAllUsers(true)
 				->setTitle(Loc::getMessage($options->moduleId.'_TAB_ANNOUNCE_testusers'))
