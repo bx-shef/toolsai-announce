@@ -25,6 +25,7 @@
 | видео (белый список хостов) и проверка картинки | `lib/announce/media.php` |
 | события для модулей | `lib/public/event/onannouncementscollectevent.php`, `onannouncementplacescollectevent.php`; сбор — `lib/announce/collector.php` (`sendEach`, журнал `SYS_firstseen`) |
 | показ на странице (main:OnEpilog) | `lib/internals/integration/main/eventhandler/onepilogeventhandler.php` |
+| пункт в меню шестерёнки вида «ИИ» (shef.toolsai:OnViewSettingsMenuBuild, 1.4.1) | `lib/internals/integration/toolsai/eventhandler/onviewsettingsmenubuildeventhandler.php`; подписки после обновления копированием — `lib/main/maintenance.php` |
 | отметки «видел» и «Понятно» (ajax) | `lib/controller/banner.php`, хранилище — `lib/announce/seenstore.php` |
 | действия страницы списка (ajax) | `lib/controller/announcement.php`, свой список — `lib/announce/ownstore.php` |
 | окно выбора мест (ui.entity-selector) | `lib/integration/ui/entityselector/placeprovider.php`, регистрация — `.settings.php` `ui.entity-selector` |

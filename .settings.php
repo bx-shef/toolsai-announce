@@ -62,6 +62,18 @@ return [
 					'sort' => 100,
 				],
 			],
+			// Пункт «Оповещения для сотрудников» в меню шестерёнки вида «ИИ»
+			// shef.toolsai (1.53.0+). Нет shef.toolsai — событие никто не шлёт.
+			[
+				'isCompatible' => false,
+				'from' => ['module' => 'shef.toolsai', 'event' => 'OnViewSettingsMenuBuild'],
+				'to' => [
+					'module' => 'shef.toolsaiannounce',
+					'class' => '\\Shef\\ToolsAiAnnounce\\Internals\\Integration\\ToolsAi\\EventHandler\\OnViewSettingsMenuBuildEventHandler',
+					'function' => 'handle',
+					'sort' => 100,
+				],
+			],
 		],
 		'readonly' => true,
 	],

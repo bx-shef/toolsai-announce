@@ -11,6 +11,7 @@ use Shef\ToolsAiAnnounce\Announce\Collector;
 use Shef\ToolsAiAnnounce\Announce\Places;
 use Shef\ToolsAiAnnounce\Announce\SeenStore;
 use Shef\ToolsAiAnnounce\Main\Constants;
+use Shef\ToolsAiAnnounce\Main\Maintenance;
 
 /**
  * Обработчик main:OnEpilog: кладёт окно объявления, если адрес страницы
@@ -22,13 +23,16 @@ use Shef\ToolsAiAnnounce\Main\Constants;
  * основное окно: не в слайдере (IFRAME=Y) и не на ajax-запросах.
  *
  * Подписку ставит установщик (installEvents в .settings.php), снимает
- * удаление.
+ * удаление. Первым делом зовёт Main\Maintenance: после обновления
+ * копированием он ставит недостающие подписки installEvents (1.4.1).
  */
 final class OnEpilogEventHandler
 {
 	/** Положить скрипт окна, если есть что показать. Ничего не бросает. */
 	public static function handle(): void
 	{
+		// Обновление копированием: подписки installEvents (до проверок — на любом хите)
+		Maintenance::ensureOnce();
 		try
 		{
 			global $USER;
