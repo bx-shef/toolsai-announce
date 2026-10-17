@@ -10,7 +10,7 @@ use Shef\ToolsAiAnnounce\Announce\OwnStore;
 use Shef\ToolsAiAnnounce\Main\Constants;
 
 /**
- * REST-методы оповещений для MCP-сервера toolsai-mcp (1.5.0) — область
+ * REST-методы оповещений для MCP-сервера toolsai-mcp (1.6.0) — область
  * shef_announce, подписка rest:OnRestServiceBuildDescription (installEvents).
  * Что отдаёт манифест и как разбираются аргументы — Announce\McpTools.
  *

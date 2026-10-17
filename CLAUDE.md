@@ -31,7 +31,7 @@
 | действия страницы списка (ajax) | `lib/controller/announcement.php`, свой список — `lib/announce/ownstore.php` |
 | окно выбора мест (ui.entity-selector) | `lib/integration/ui/entityselector/placeprovider.php`, регистрация — `.settings.php` `ui.entity-selector` |
 | выбор тестовых (старое «1,15» → JSON при показе) | `lib/main/testusersoption.php`, чистая часть — `Announcements::testUsersSelectorValue()` |
-| инструменты MCP (1.5.0): манифест, REST `shef.announce.*` | `lib/announce/mcptools.php` (чистая), методы — `lib/integration/rest/service.php`, глава `docs/guide/04-mcp.md` |
+| инструменты MCP (1.6.0): манифест, REST `shef.announce.*` | `lib/announce/mcptools.php` (чистая), методы — `lib/integration/rest/service.php`, глава `docs/guide/04-mcp.md` |
 | страница списка | `admin/list.php` через заглушку `Main\AdminPage` (скрипт — в самой странице); строки, бейджи и меню «…» — `lib/announce/listview.php` |
 
 ## Решения, которые не «упрощать»

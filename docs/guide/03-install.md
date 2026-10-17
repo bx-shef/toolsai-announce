@@ -24,7 +24,7 @@ PHP 8.2+, главный модуль 22.600.300+, портал в UTF-8.
    shef.toolsai 1.53+ — ссылка на страницу списка, только при праве на модуль
    от R. Нет shef.toolsai или он старше — событие никто не шлёт.
 5. Подписка старого вида (`isCompatible`) `rest:OnRestServiceBuildDescription` →
-   `Integration\Rest\Service::onRestServiceBuildDescription()` (1.5.0):
+   `Integration\Rest\Service::onRestServiceBuildDescription()` (1.6.0):
    REST-методы `shef.announce.*` в области `shef_announce` для MCP-сервера —
    [04-mcp.md](04-mcp.md).
 
