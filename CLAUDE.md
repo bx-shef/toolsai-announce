@@ -19,12 +19,11 @@
 
 | что | где |
 |---|---|
-| чистая логика: разбор, выбор, слияние, перенос | `lib/announce/announcements.php` |
+| чистая логика: разбор, выбор, слияние | `lib/announce/announcements.php` |
 | событие для модулей | `lib/public/event/onannouncementscollectevent.php`, сбор — `lib/announce/collector.php` |
 | показ на странице CRM (main:OnEpilog) | `lib/internals/integration/main/eventhandler/onepilogeventhandler.php` |
 | отметка «видел» (ajax) | `lib/controller/banner.php`, хранилище — `lib/announce/seenstore.php` |
 | выбор тестовых (старое «1,15» → JSON при показе) | `lib/main/testusersoption.php`, чистая часть — `Announcements::testUsersSelectorValue()` |
-| перенос из shef.toolsai | `lib/main/migration.php`, зовёт `InstallDB()` |
 | страница списка | `admin/list.php` через заглушку `Main\AdminPage` |
 
 ## Решения, которые не «упрощать»
@@ -32,7 +31,8 @@
 * **От shef.toolsai не зависеть.** Ни `requireModules`, ни `NEED_MODULES`, ни
   вызовов его классов — держит `tests/settings_test.php`.
 * **Коды настроек и отметок — как в shef.toolsai** (`ANNOUNCE_list`,
-  `ANNOUNCE_testusers`, `announce_seen`): на них держится перенос.
+  `ANNOUNCE_testusers`, `announce_seen`): на них лежат данные порталов,
+  перенесённые до 1.2.0. Перенос убран — сменить код значит потерять данные.
 * **Свой список побеждает модульный** при совпадении id: так администратор
   выключает чужое объявление. Удалить модульное нельзя — только заменить.
 * **Модули зовутся по одному** (фильтр по `TO_MODULE_ID`): сбой одного
@@ -51,8 +51,7 @@
 |---|---|
 | `announce_test.php` | разбор, аудитория, вид окна, отметки, скрипт без HTML-подстановки |
 | `merge_test.php` | слияние со списком модулей, Collector, показ на странице CRM |
-| `seen_test.php` | отметки вместе с shef.toolsai, действие `seenAction`, повторная установка и удаление подписок |
-| `migration_test.php` | перенос настроек и отметок, повтор ничего не портит |
+| `seen_test.php` | отметки (старые shef.toolsai не читаются), действие `seenAction`, повторная установка и удаление подписок |
 | `settings_test.php` | зависимости, подписки установщика, удаление (savedata), контроллер, коды настроек |
 | `adminpage_test.php` | заглушка в /bitrix/admin: путь, своя/чужая |
 | `autoload_test.php` | класс лежит там, где его ищет ядро |

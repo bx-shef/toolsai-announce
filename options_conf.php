@@ -12,7 +12,7 @@ use Shef\ToolsAiAnnounce\Main\TestUsersOption;
  *
  * Tab(prefix)->Option(code) ~> код свойства: prefix_code. Вкладка ANNOUNCE и
  * опция testusers дают ANNOUNCE_testusers — тот же код, что был в
- * shef.toolsai: установщик переносит значение как есть. Список объявлений
+ * shef.toolsai (значение перенесено до 1.2.0). Список объявлений
  * (ANNOUNCE_list, JSON) правится не здесь, а на своей странице — ссылка в
  * первой строке вкладки. Тестовые пользователи — штатный выбор сотрудников
  * (ui.entity-selector), значение — JSON-список; старое «1,15» тоже читается

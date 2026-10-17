@@ -3,8 +3,8 @@
 /**
  * Соглашение автозагрузки: класс обязан лежать там, где его будет искать ядро.
  *
- * \Bitrix\Main\Loader отображает Shef\ToolsAiAnnounce\Main\Migration в
- * bitrix/modules/shef.toolsaiannounce/lib/main/migration.php: первые два сегмента
+ * \Bitrix\Main\Loader отображает Shef\ToolsAiAnnounce\Main\AdminPage в
+ * bitrix/modules/shef.toolsaiannounce/lib/main/adminpage.php: первые два сегмента
  * namespace — идентификатор модуля, остальные — путь СТРОЧНЫМИ. Настройки у
  * этого отображения нет, registerNamespace модуля пуст, и
  * починить промах в одном файле нечем.

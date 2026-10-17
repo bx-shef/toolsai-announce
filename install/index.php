@@ -24,9 +24,10 @@ Loc::loadMessages(__FILE__);
  *   1) постоянная подписка main:OnEpilog — по installEvents из .settings.php,
  *      снимается парным UnInstallEvents();
  *   2) заглушка страницы списка в /bitrix/admin — пишется, а не копируется
- *      (Main\AdminPage), удаляется только своя;
- *   3) перенос из shef.toolsai (Main\Migration): настройки ANNOUNCE_list,
- *      ANNOUNCE_testusers, если свои пусты, и отметки «видел».
+ *      (Main\AdminPage), удаляется только своя.
+ *
+ * Перенос из shef.toolsai и снятие его старого OnEpilog убраны в 1.2.0: на
+ * порталах модуль уже стоит, данные перенесены.
  *
  * На классы модуля в установщике автозагрузка не рассчитана: всё, что нужно
  * до регистрации модуля, подключается явным require_once.
@@ -91,7 +92,7 @@ class shef_toolsaiannounce
 
 	// region DB && Register Module ////
 	/**
-	 * Регистрация модуля и перенос из shef.toolsai.
+	 * Регистрация модуля, сброс кеша списка.
 	 *
 	 * @memo Need call first
 	 */
@@ -99,21 +100,9 @@ class shef_toolsaiannounce
 	{
 		RegisterModule($this->MODULE_ID);
 
-		try
+		if(\Bitrix\Main\Loader::includeModule($this->MODULE_ID))
 		{
-			\Bitrix\Main\Loader::includeModule($this->MODULE_ID);
-			$done = \Shef\ToolsAiAnnounce\Main\Migration::run();
 			\Shef\ToolsAiAnnounce\Announce\Collector::clearCache();
-			$this->report[] = htmlspecialcharsbx((string)Loc::getMessage('SH_ANNOUNCE_MIGRATED', [
-				'#OPTIONS#' => $done['options'] !== [] ? implode(', ', $done['options']) : Loc::getMessage('SH_ANNOUNCE_MIGRATED_NONE'),
-				'#USERS#' => $done['users'],
-			]));
-		}
-		catch(\Throwable $throwable)
-		{
-			$this->report[] = htmlspecialcharsbx((string)Loc::getMessage('SH_ANNOUNCE_MIGRATE_FAIL', [
-				'#MESSAGE#' => $throwable->getMessage(),
-			]));
 		}
 
 		return true;
@@ -159,22 +148,10 @@ class shef_toolsaiannounce
 		return is_array($list) ? $list : [];
 	}
 
-	/**
-	 * Обработчик новинок shef.toolsai до 1.50.0: при установке этого модуля
-	 * снимается, иначе на старом shef.toolsai окно показывалось бы дважды.
-	 * Класс — в обоих написаниях: ядро сравнивает строку как есть.
-	 */
-	private const LEGACY_EPILOG = ['main', 'OnEpilog', 'shef.toolsai', 'Shef\\ToolsAi\\Announce\\Events', 'onEpilog'];
-
-	/** Зарегистрировать подписки; повторная установка не плодит дублей. Снять старый обработчик shef.toolsai. */
+	/** Зарегистрировать подписки; повторная установка не плодит дублей. */
 	public function InstallEvents(): bool
 	{
 		$eventManager = EventManager::getInstance();
-		[$from, $event, $toModule, $class, $method] = self::LEGACY_EPILOG;
-		foreach([$class, '\\'.$class] as $legacyClass)
-		{
-			$eventManager->unRegisterEventHandler($from, $event, $toModule, $legacyClass, $method);
-		}
 		foreach($this->getEventsList() as $event)
 		{
 			$eventManager->unRegisterEventHandler(

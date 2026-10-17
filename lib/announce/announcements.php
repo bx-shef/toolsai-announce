@@ -343,48 +343,6 @@ final class Announcements
 	}
 
 	/**
-	 * Отметки «видел» из shef.toolsai и свои — в одну: без повторов, свои
-	 * последними (самые свежие), не больше MAX_SEEN. Для переноса при установке.
-	 *
-	 * @param mixed $own свои отметки (что лежит в CUserOptions)
-	 * @param mixed $legacy отметки из shef.toolsai
-	 * @return list<string>
-	 */
-	public static function mergeSeen(mixed $own, mixed $legacy): array
-	{
-		$result = [];
-		foreach([is_array($legacy) ? $legacy : [], is_array($own) ? $own : []] as $list)
-		{
-			foreach($list as $id)
-			{
-				if(is_scalar($id) && preg_match(self::ID_PATTERN, (string)$id))
-				{
-					$result = static::markSeen($result, (string)$id);
-				}
-			}
-		}
-
-		return $result;
-	}
-
-	/**
-	 * Перенос настройки: своё пусто, а в shef.toolsai есть — взять оттуда.
-	 *
-	 * @param string|null $own своё сохранённое значение (null — не сохраняли)
-	 * @param string|null $legacy значение в shef.toolsai
-	 * @return string|null что записать; null — не трогать
-	 */
-	public static function migrateOption(?string $own, ?string $legacy): ?string
-	{
-		if($own !== null && trim($own) !== '')
-		{
-			return null;
-		}
-
-		return $legacy !== null && trim($legacy) !== '' ? $legacy : null;
-	}
-
-	/**
 	 * Скрипт показа: встаёт в штатную очередь баннеров Битрикс24 (ui.banner-dispatcher),
 	 * чтобы не открываться поверх чужих окон. Вид — нарядное окно (светлая карточка со своей картинкой)
 	 * или штатное «Что нового» (ui.dialogs.whats-new). Текст экранирован.

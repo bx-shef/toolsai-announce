@@ -6,9 +6,6 @@ $MESS['shef.toolsaiannounce_PARTNER_URI'] = 'https://bx-shef.by';
 
 $MESS['SH_MOD_BACK'] = 'К списку модулей';
 $MESS['SH_MOD_INST_OK'] = 'Модуль успешно установлен';
-$MESS['SH_ANNOUNCE_MIGRATED'] = 'Перенесено из shef.toolsai: настройки — #OPTIONS#; отметки «видел» — у #USERS# пользователей.';
-$MESS['SH_ANNOUNCE_MIGRATED_NONE'] = 'нет';
-$MESS['SH_ANNOUNCE_MIGRATE_FAIL'] = 'Перенос из shef.toolsai не выполнен: #MESSAGE#. Модуль установлен; перенос повторится при переустановке.';
 $MESS['SH_ANNOUNCE_ADMIN_PAGE_FAIL'] = 'Не удалось положить страницу /bitrix/admin/#FILE#: нет прав на запись или там чужой файл.';
 
 $MESS['SH_NEED_RIGHT_VER'] = 'Для установки данного решения необходима версия главного модуля #NEED# или выше.';
