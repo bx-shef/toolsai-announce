@@ -19,7 +19,7 @@ use Shef\ToolsAiAnnounce\Public\Event\OnAnnouncementsCollectEvent;
  * модуля) не зовутся — подписка модуля-источника постоянная, из установщика.
  *
  * Список для страниц CRM кешируется (Bitrix\Main\Data\Cache, CACHE_TTL);
- * сброс — clearCache() при сохранении списка на странице «Новинки для
+ * сброс — clearCache() при сохранении списка на странице «Оповещения для
  * сотрудников». Тестовые пользователи и отметки в кеш не входят. Конфликты id пишутся в лог один раз — пока набор
  * конфликтов не изменился (отпечаток в SYS_conflicts), иначе каждая
  * страница CRM писала бы одно и то же.
@@ -186,7 +186,7 @@ final class Collector
 				moduleId: Constants::MODULE_ID,
 				className: static::class,
 				assigned: \Shef\Problems\Main\Constants::getDefUserId(),
-			)->warning('Новинки для сотрудников: конфликты объявлений', ['conflicts' => $conflicts]);
+			)->warning('Оповещения для сотрудников: конфликты объявлений', ['conflicts' => $conflicts]);
 		}
 		catch(\Throwable)
 		{

@@ -1,8 +1,8 @@
 # Памятка агенту: shef.toolsaiannounce
 
-> Последняя сверка: 2026-10-16
+> Последняя сверка: 2026-10-17
 
-Модуль коробочного Битрикс24 «Новинки для сотрудников»: окно с объявлением
+Модуль коробочного Битрикс24 «Оповещения для сотрудников»: окно с объявлением
 один раз при открытии CRM. Вынесен из `shef.toolsai` (1.31.0–1.49.x) без
 изменения поведения. Опирается на `shef.options` и `shef.problems` и сделан по
 канону линейки — сборка, тесты, раскладка. Чего здесь не хватает — смотрите
@@ -23,6 +23,7 @@
 | событие для модулей | `lib/public/event/onannouncementscollectevent.php`, сбор — `lib/announce/collector.php` |
 | показ на странице CRM (main:OnEpilog) | `lib/internals/integration/main/eventhandler/onepilogeventhandler.php` |
 | отметка «видел» (ajax) | `lib/controller/banner.php`, хранилище — `lib/announce/seenstore.php` |
+| выбор тестовых (старое «1,15» → JSON при показе) | `lib/main/testusersoption.php`, чистая часть — `Announcements::testUsersSelectorValue()` |
 | перенос из shef.toolsai | `lib/main/migration.php`, зовёт `InstallDB()` |
 | страница списка | `admin/list.php` через заглушку `Main\AdminPage` |
 

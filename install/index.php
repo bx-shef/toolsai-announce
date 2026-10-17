@@ -16,7 +16,7 @@ if(class_exists('shef_toolsaiannounce'))
 Loc::loadMessages(__FILE__);
 
 /**
- * Установка shef.toolsaiannounce — «Новинки для сотрудников».
+ * Установка shef.toolsaiannounce — «Оповещения для сотрудников».
  *
  * Канон — установщики shef.problems и shef.toolsai (проверки UTF-8, PHP,
  * версий; savedata; каталог модуля от самого установщика). Плюс:
@@ -81,7 +81,7 @@ class shef_toolsaiannounce
 		$this->MODULE_DESCRIPTION = Loc::getMessage('shef.toolsaiannounce_MODULE_DESC');
 
 		$sort = 'MODULE_SORT';
-		$this->{$sort} = (int)'1011';
+		$this->{$sort} = (int)'1004';
 
 		$this->PARTNER_NAME = Loc::getMessage('shef.toolsaiannounce_PARTNER_NAME');
 		$this->PARTNER_URI = Loc::getMessage('shef.toolsaiannounce_PARTNER_URI');

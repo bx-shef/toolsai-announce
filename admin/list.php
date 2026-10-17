@@ -1,7 +1,7 @@
 <?php declare(strict_types=1);
 
 /**
- * «Новинки для сотрудников» — список объявлений.
+ * «Оповещения для сотрудников» — список объявлений.
  *
  * Открывается через /bitrix/admin/shef_toolsaiannounce_list.php — заглушку в
  * одну строку, которую пишет Main\AdminPage (каталог модуля браузеру
@@ -47,7 +47,7 @@ if(!Loader::includeModule('shef.toolsaiannounce'))
 $right = $APPLICATION->GetGroupRight(Constants::MODULE_ID);
 if($right < 'R')
 {
-	$APPLICATION->AuthForm('Нет доступа к «Новинкам для сотрудников».');
+	$APPLICATION->AuthForm('Нет доступа к «Оповещениям для сотрудников».');
 }
 $canEdit = $right >= 'W';
 
@@ -141,7 +141,7 @@ $doneText = [
 	'full' => 'Не сохранено: в своём списке не больше '.Announcements::MAX_ITEMS.' объявлений.',
 ][(string)$request->getQuery('annDone')] ?? '';
 
-$APPLICATION->SetTitle('Новинки для сотрудников');
+$APPLICATION->SetTitle('Оповещения для сотрудников');
 require $_SERVER['DOCUMENT_ROOT'].'/bitrix/modules/main/include/prolog_admin_after.php';
 ?>
 <p style="max-width:900px">Объявление показывается сотруднику <b>один раз</b> при открытии CRM — окном с текстом и ссылкой. Сначала проверьте на тестовых пользователях, потом переключите аудиторию на «все сотрудники». Новое объявление — новый показ всем; правка текста уже видевшим не покажется снова.</p>

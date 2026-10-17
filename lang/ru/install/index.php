@@ -1,5 +1,5 @@
 <?php
-$MESS['shef.toolsaiannounce_MODULE_NAME'] = '[SH] Новинки для сотрудников';
+$MESS['shef.toolsaiannounce_MODULE_NAME'] = '[SH] Оповещения для сотрудников';
 $MESS['shef.toolsaiannounce_MODULE_DESC'] = 'Объявления, которые сотрудник видит один раз при открытии CRM: что появилось, зачем и ссылка на подробности. Другие модули добавляют свои объявления событием OnAnnouncementsCollect.';
 $MESS['shef.toolsaiannounce_PARTNER_NAME'] = 'ИП Шевчик И.С.';
 $MESS['shef.toolsaiannounce_PARTNER_URI'] = 'https://bx-shef.by';
