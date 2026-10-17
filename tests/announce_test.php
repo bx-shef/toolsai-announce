@@ -1,7 +1,7 @@
 <?php declare(strict_types=1);
 
 /**
- * «Новинки для сотрудников» — без ядра: разбор списка, выбор объявления для
+ * «Оповещения для сотрудников» — без ядра: разбор списка, выбор объявления для
  * пользователя, отметка «видел», окно без подстановки HTML. Перенесено из
  * shef.toolsai (tests/announce_test.php) — поведение для сотрудника то же.
  */
@@ -34,6 +34,12 @@ Check::same('не больше MAX_ITEMS', count(A::normalizeList(array_map(stat
 
 Check::group('кому показать');
 Check::same('тестовые пользователи', A::testUsers('1, 15 ;x,0'), [1, 15]);
+Check::same('тестовые: старое «1» с портала', A::testUsers('1'), [1]);
+Check::same('тестовые: JSON выбора сотрудников', A::testUsers('[{"id":1,"entityId":"user","title":"A"},{"id":"15","entityId":"user"},{"id":3,"entityId":"department"},{"id":"all-users","entityId":"meta-user"},{"id":1,"entityId":"user"}]'), [1, 15]);
+Check::same('тестовые: экранированный JSON', A::testUsers('[{&quot;id&quot;:7,&quot;entityId&quot;:&quot;user&quot;}]'), [7]);
+Check::same('тестовые: пустой JSON', A::testUsers('[]'), []);
+Check::same('тестовые: битый JSON — никого', A::testUsers('[{"id":'), []);
+Check::same('тестовые: пусто', A::testUsers(''), []);
 $items = [
 	['id' => 't', 'title' => 'T', 'audience' => 'test', 'active' => true],
 	['id' => 'off', 'title' => 'O', 'audience' => 'all', 'active' => false],

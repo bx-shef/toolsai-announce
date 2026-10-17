@@ -3,7 +3,7 @@
 namespace Shef\ToolsAiAnnounce\Main;
 
 /**
- * Заглушка страницы списка «Новинки для сотрудников» в /bitrix/admin.
+ * Заглушка страницы списка «Оповещения для сотрудников» в /bitrix/admin.
  *
  * Перенесено из shef.problems (Shef\Problems\Main\AdminPage) с заменой
  * имён файлов.

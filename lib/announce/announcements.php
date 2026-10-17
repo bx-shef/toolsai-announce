@@ -5,7 +5,7 @@ namespace Shef\ToolsAiAnnounce\Announce;
 use Shef\ToolsAiAnnounce\Main\Constants;
 
 /**
- * «Новинки для сотрудников»: объявления, которые сотрудник видит один раз
+ * «Оповещения для сотрудников»: объявления, которые сотрудник видит один раз
  * при открытии CRM — что появилось, зачем и ссылка на подробности.
  *
  * Перенесено из shef.toolsai (Shef\ToolsAi\Announce\Announcements, 1.31.0–1.49)
@@ -191,13 +191,39 @@ final class Announcements
 	}
 
 	/**
-	 * «1, 15 ,x» → [1, 15].
+	 * ID тестовых пользователей из настройки ANNOUNCE_testusers.
+	 *
+	 * Понимает два вида: JSON-список штатного выбора сотрудников
+	 * (shef.options Department: `[{"id":1,"entityId":"user",...}]`, берутся
+	 * только записи entityId=user; экранированный `&quot;` тоже) и старый «ID через запятую» (`1,15`).
 	 *
 	 * @return list<int>
 	 */
 	public static function testUsers(?string $value): array
 	{
-		$ids = array_filter(array_map('intval', preg_split('/[\s,;]+/', (string)$value) ?: []), static fn(int $id): bool => $id > 0);
+		$value = trim((string)$value);
+		if(str_starts_with($value, '[') && str_contains($value, '&quot;'))
+		{
+			// значение могло сохраниться экранированным — shef.options само делает htmlspecialcharsback
+			$value = htmlspecialchars_decode($value, ENT_QUOTES);
+		}
+		$ids = [];
+		$decoded = str_starts_with($value, '[') ? json_decode($value, true) : null;
+		if(is_array($decoded))
+		{
+			foreach($decoded as $row)
+			{
+				if(is_array($row) && ($row['entityId'] ?? '') === 'user' && is_numeric($row['id'] ?? null))
+				{
+					$ids[] = (int)$row['id'];
+				}
+			}
+		}
+		else
+		{
+			$ids = array_map('intval', preg_split('/[\s,;]+/', $value) ?: []);
+		}
+		$ids = array_filter($ids, static fn(int $id): bool => $id > 0);
 
 		return array_values(array_unique($ids));
 	}

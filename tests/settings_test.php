@@ -56,7 +56,7 @@ $GLOBALS['APPLICATION'] = null;
 require $root.'/install/index.php';
 $module = new shef_toolsaiannounce();
 Check::same('MODULE_ID', $module->MODULE_ID, Constants::MODULE_ID);
-Check::same('версия из version.php', $module->MODULE_VERSION, '1.0.1');
+Check::same('версия из version.php', $module->MODULE_VERSION, '1.1.0');
 $module->InstallEvents();
 $handler = ['main', 'OnEpilog', Constants::MODULE_ID, $event['to']['class'], 'handle'];
 Check::same('InstallEvents регистрирует OnEpilog', \Bitrix\Main\EventManager::$registered, [$handler]);
@@ -86,7 +86,8 @@ require $root.'/default_option.php';
 Check::same('default_option', array_keys($shef_toolsaiannounce_default_option), [Constants::OPTION_LIST, Constants::OPTION_TEST_USERS]);
 Check::same('тестовые по умолчанию — администратор', $shef_toolsaiannounce_default_option[Constants::OPTION_TEST_USERS], '1');
 $conf = (string)file_get_contents($root.'/options_conf.php');
-Check::same('options_conf: вкладка ANNOUNCE + testusers = ANNOUNCE_testusers', str_contains($conf, "new Options\\Tab('ANNOUNCE')") && str_contains($conf, "new Options\\Text('testusers')"), true);
+Check::same('options_conf: вкладка ANNOUNCE + выбор сотрудников testusers = ANNOUNCE_testusers', str_contains($conf, "new Options\\Tab('ANNOUNCE')") && str_contains($conf, "new Options\\Department('testusers')") && str_contains($conf, '->setOnlyUsers(true)'), true);
+Check::same('MODULE_SORT = 1004 (место в списке решений)', str_contains((string)file_get_contents(__DIR__.'/../install/index.php'), "(int)'1004'"), true);
 Check::same('коды те же, что в shef.toolsai', [Constants::OPTION_LIST, Constants::OPTION_TEST_USERS, Constants::SEEN_OPTION], ['ANNOUNCE_list', 'ANNOUNCE_testusers', 'announce_seen']);
 Check::same('options.php — копия из shef.options (страница от $mid)', str_contains((string)file_get_contents($root.'/options.php'), "require __DIR__.'/options_conf.php'"), true);
 

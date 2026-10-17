@@ -13,7 +13,9 @@ use Shef\ToolsAiAnnounce\Main\Constants;
  * опция testusers дают ANNOUNCE_testusers — тот же код, что был в
  * shef.toolsai: установщик переносит значение как есть. Список объявлений
  * (ANNOUNCE_list, JSON) правится не здесь, а на своей странице — ссылка в
- * первой строке вкладки.
+ * первой строке вкладки. Тестовые пользователи — штатный выбор сотрудников
+ * (ui.entity-selector), значение — JSON-список; старое «1,15» тоже читается
+ * (Announcements::testUsers).
  */
 
 $response = ShOptionsConfig::getInstance(
@@ -39,7 +41,9 @@ $options->addTab(
 				->setType(Options\TypeUIAlert::Note)
 		)
 		->addOption(
-			(new Options\Text('testusers'))
+			(new Options\Department('testusers'))
+				->setOnlyUsers(true)
+				->setNotUseAllUsers(true)
 				->setTitle(Loc::getMessage($options->moduleId.'_TAB_ANNOUNCE_testusers'))
 				->setDescription(Loc::getMessage($options->moduleId.'_TAB_ANNOUNCE_testusers_descr'))
 		)
