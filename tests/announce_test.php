@@ -83,7 +83,7 @@ $js = A::script(['layout' => A::LAYOUT_COSMOS, 'items' => [$one]]);
 Check::same('через очередь баннеров', str_contains($js, 'ui.banner-dispatcher'), true);
 Check::same('слайды — штатное «Что нового»', str_contains(A::script(['layout' => A::LAYOUT_SLIDES, 'items' => [$one]]), 'ui.dialogs.whats-new'), true);
 Check::same('HTML из настроек не попадает как есть', str_contains($js, '<b>'), false);
-Check::same('своя картинка, без файлов ядра', [str_contains($js, '<svg'), str_contains($js, '/bitrix/js/')], [true, false]);
+Check::same('своя картинка в данных окна (теги экранированы), без файлов ядра', [str_contains($js, 'sa-news'), str_contains($js, '<svg'), str_contains($js, '/bitrix/js/')], [true, false, false]);
 Check::same('отметка при показе — своим действием', str_contains($js, "BX.ajax.runAction(\"shef:toolsaiannounce.banner.seen\""), true);
 Check::same('старого действия shef.toolsai нет', str_contains($js, 'toolsai.kb.seen'), false);
 $slides = A::script(['layout' => A::LAYOUT_SLIDES, 'items' => [$one]]);
