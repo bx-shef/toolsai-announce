@@ -223,6 +223,8 @@ namespace Bitrix\Main
 		class Context
 		{
 			public static string $page = '/';
+			/** Адрес как в адресной строке; пусто — $page. */
+			public static string $uri = '';
 			public static bool $ajax = false;
 			/** @var array<string, string> */
 			public static array $params = [];
@@ -241,6 +243,11 @@ namespace Bitrix\Main
 						return Context::$page;
 					}
 
+					public function getRequestUri(): string
+					{
+						return Context::$uri !== '' ? Context::$uri : Context::$page;
+					}
+
 					public function isAjaxRequest(): bool
 					{
 						return Context::$ajax;
@@ -249,6 +256,35 @@ namespace Bitrix\Main
 					public function get(string $name): ?string
 					{
 						return Context::$params[$name] ?? null;
+					}
+				};
+			}
+		}
+	}
+}
+
+namespace Bitrix\Main
+{
+	if(!class_exists(UserTable::class))
+	{
+		/** Пользователи — из $GLOBALS['TEST_USERS'] (id => строка); фильтр только =ID / @ID. */
+		class UserTable
+		{
+			public static int $calls = 0;
+
+			public static function getList(array $params = []): object
+			{
+				static::$calls++;
+				$ids = (array)($params['filter']['=ID'] ?? $params['filter']['@ID'] ?? []);
+				$rows = array_values(array_filter($GLOBALS['TEST_USERS'] ?? [], static fn(array $r): bool => in_array((int)$r['ID'], array_map('intval', $ids), true)));
+
+				return new class($rows)
+				{
+					public function __construct(private array $rows) {}
+
+					public function fetch(): array|false
+					{
+						return array_shift($this->rows) ?? false;
 					}
 				};
 			}

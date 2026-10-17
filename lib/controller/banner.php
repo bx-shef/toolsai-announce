@@ -11,7 +11,10 @@ use Shef\ToolsAiAnnounce\Announce\SeenStore;
 /**
  * Окно новинки:
  *
- *   BX.ajax.runAction('shef:toolsaiannounce.banner.seen', {data: {id}})
+ *   BX.ajax.runAction('shef:toolsaiannounce.banner.seen', {data: {id, ok}})
+ *
+ * При показе — без ok (отметка «видел» и время показа); нажал главную
+ * кнопку, «Понятно» или «Посмотрел» — ok=Y (для повтора «пока не нажмёт»).
  *
  * Только POST, sessid, авторизованный пользователь. Пишет отметку только
  * себе — чужую отметку поставить нельзя.
@@ -41,7 +44,7 @@ class Banner extends Controller
 	 *
 	 * @return array{ok: bool}|null
 	 */
-	public function seenAction(string $id): ?array
+	public function seenAction(string $id, string $ok = ''): ?array
 	{
 		$userId = (int)$this->getCurrentUser()?->getId();
 		if($userId <= 0 || !preg_match(Announcements::ID_PATTERN, $id))
@@ -50,7 +53,7 @@ class Banner extends Controller
 
 			return null;
 		}
-		SeenStore::mark($userId, $id);
+		SeenStore::mark($userId, $id, $ok === 'Y');
 
 		return ['ok' => true];
 	}

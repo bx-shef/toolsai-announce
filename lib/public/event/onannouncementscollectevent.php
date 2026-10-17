@@ -13,8 +13,16 @@ use Shef\ToolsAiAnnounce\Main\Constants;
  *
  *   new EventResult(EventResult::SUCCESS, ['announcements' => [
  *       ['id' => 'calls-ai-2026-10', 'title' => '…', 'text' => '…', 'url' => 'https://…',
- *        'linkText' => '…', 'audience' => 'test'|'all', 'active' => true, 'layout' => 'cosmos'|'slides'],
+ *        'linkText' => '…', 'audience' => 'test'|'all'|'custom', 'active' => true,
+ *        'layout' => 'cosmos'|'important'|'danger'|'congrats'|'video'|'slides'],
  *   ]], 'vendor.module');
+ *
+ * Поля 1.4.0 (все необязательные, без них — поведение до 1.4.0): places
+ * (где показывать, по умолчанию ['/crm/']), users/departments (для custom),
+ * video, dateFrom/dateTo, sort, repeat/repeatDays, buttonColor, published,
+ * showToNew. Полная таблица с пределами — docs/guide/02-event.md. Поле image
+ * модулю не задаётся: своя картинка загружается только на странице списка
+ * (сохранить можно лишь файл этого модуля).
  *
  * Третий аргумент EventResult — идентификатор модуля-источника, без него
  * ответ не принимается. id — `^[a-z0-9][a-z0-9-]{0,39}$`. Объявление с тем же
