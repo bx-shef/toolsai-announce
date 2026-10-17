@@ -128,9 +128,10 @@ class Announcement extends Controller
 		}
 		$gone = false;
 		$full = false;
-		$ok = $this->locked(static function() use($id, $merged, &$gone, &$full): void
+		$invalid = false;
+		$ok = $this->locked(static function() use($id, $merged, &$gone, &$full, &$invalid): void
 		{
-			OwnStore::update(static function(array $own) use($id, $merged, &$gone, &$full): ?array
+			OwnStore::update(static function(array $own) use($id, $merged, &$gone, &$full, &$invalid): ?array
 			{
 				$old = null;
 				foreach($own as $item)
@@ -138,6 +139,7 @@ class Announcement extends Controller
 					if($item['id'] === $id)
 					{
 						$old = $item;
+						break;
 					}
 				}
 				if($old === null && ($merged['source'] ?? '') === Announcements::SOURCE_SETTINGS)
@@ -152,8 +154,9 @@ class Announcement extends Controller
 				$item['active'] = empty($old['active']);
 				$item['published'] = Announcements::publishedOnSave($item, $old, time());
 				$item = Announcements::normalize($item);
+				$invalid = $item === null;
 				$list = $item !== null ? Announcements::upsert($own, $item) : null;
-				$full = $list === null;
+				$full = !$invalid && $list === null;
 
 				return $list;
 			});
@@ -165,6 +168,12 @@ class Announcement extends Controller
 		if($gone)
 		{
 			$this->addError(new Error('Объявление не найдено. Обновите страницу.', 'not_found'));
+
+			return null;
+		}
+		if($invalid)
+		{
+			$this->addError(new Error('Не сохранено: нужен заголовок, а код — латиница, цифры и дефис.', 'invalid'));
 
 			return null;
 		}
