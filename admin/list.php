@@ -304,23 +304,23 @@ BX.ready(function(){
 
 		var two = function(a, b){ var w = el('div', 'shef-ann-two'); w.appendChild(a); w.appendChild(b); return w; };
 		var rVideo = field('Ссылка на видео', f.video, 'YouTube, Rutube, VK Видео (https) или файл .mp4 с портала (/upload/…).');
-		var rPeople = field('Сотрудники и отделы', peopleBox);
-		var rDays = field('Через сколько дней', f.repeatDays);
+		var rPeople = field('Сотрудники и отделы', peopleBox, 'Отдел — сотрудники, у которых он записан в профиле, без подотделов.');
+		var rDays = field('Через сколько дней', f.repeatDays, 'От 1 до 365, считается от прошлого показа.');
 		[
 			errors,
 			field('Заголовок', f.title),
 			field('Текст', text),
-			two(field('Вид', f.layout), field('Цвет главной кнопки', f.buttonColor)),
+			two(field('Вид', f.layout, '«Важное» закрывается только кнопкой, без крестика и Esc. «Слайды «Что нового»» — все подходящие объявления этого вида листаются в одном окне.'), field('Цвет главной кнопки', f.buttonColor)),
 			rVideo,
 			field('Своя картинка (вместо стандартной)', imgWrap, 'jpg, png, webp или gif, до 2 МБ.'),
-			field('Ссылка на подробности (можно пусто)', f.url),
+			field('Ссылка на подробности (можно пусто)', f.url, 'Только https://. Открывается главной кнопкой окна.'),
 			field('Текст главной кнопки', f.linkText),
 			field('Где показывать', placesBox, 'Выберите место или введите начало адреса, например /shef/toolsai/view/?type=2&category=0'),
-			field('Кому', f.audience),
+			field('Кому', f.audience, 'Сначала проверьте на себе: «Тестовые пользователи» задаются в настройках модуля. Потом переключите на всех.'),
 			rPeople,
-			two(field('Показывать с', f.dateFrom), field('по', f.dateTo)),
-			two(field('Повтор', f.repeat), rDays),
-			field('Порядок (меньше — раньше)', f.sort),
+			two(field('Показывать с', f.dateFrom, 'Даты включительно, по времени сервера. Пусто — без ограничения.'), field('по', f.dateTo)),
+			two(field('Повтор', f.repeat, '«Пока не нажмёт «Понятно»» — крестик и Esc не считаются.'), rDays),
+			field('Порядок (меньше — раньше)', f.sort, 'За раз сотрудник видит одно окно: первое подходящее по порядку, остальные — на следующих страницах.'),
 			f.showToNew,
 			f.active
 		].forEach(function(n){ root.appendChild(n); });

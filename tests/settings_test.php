@@ -58,7 +58,7 @@ $GLOBALS['APPLICATION'] = null;
 require $root.'/install/index.php';
 $module = new shef_toolsaiannounce();
 Check::same('MODULE_ID', $module->MODULE_ID, Constants::MODULE_ID);
-Check::same('версия из version.php', $module->MODULE_VERSION, '1.4.1');
+Check::same('версия из version.php', $module->MODULE_VERSION, '1.4.2');
 $module->InstallEvents();
 $handler = ['main', 'OnEpilog', Constants::MODULE_ID, $event['to']['class'], 'handle'];
 $menuHandler = ['shef.toolsai', 'OnViewSettingsMenuBuild', Constants::MODULE_ID, $menuEvent['to']['class'], 'handle'];
