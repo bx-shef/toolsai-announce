@@ -136,18 +136,21 @@ class Announcement extends Controller
 			return null;
 		}
 		$image = 0;
-		$ok = $this->locked(static fn() => OwnStore::update(static function(array $own) use($id, &$image): array
+		$ok = $this->locked(static function() use($id, &$image): void
 		{
-			foreach($own as $item)
+			OwnStore::update(static function(array $own) use($id, &$image): array
 			{
-				if($item['id'] === $id)
+				foreach($own as $item)
 				{
-					$image = (int)$item['image'];
+					if($item['id'] === $id)
+					{
+						$image = (int)$item['image'];
+					}
 				}
-			}
 
-			return Announcements::remove($own, $id);
-		}));
+				return Announcements::remove($own, $id);
+			});
+		});
 		if(!$ok)
 		{
 			return null;

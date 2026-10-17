@@ -140,6 +140,11 @@ final class McpTools
 				$fields[$key] = $args[$key];
 			}
 		}
+		// REST может прийти формой: «false», «N» — не true (как в Controller\Announcement)
+		if(array_key_exists('showToNew', $fields))
+		{
+			$fields['showToNew'] = in_array($fields['showToNew'], ['Y', 'true', true, 1, '1'], true);
+		}
 
 		return $fields;
 	}

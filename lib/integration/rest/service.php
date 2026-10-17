@@ -96,7 +96,16 @@ class Service
 
 		return static::store(static function(array $own) use($id, $merged): array
 		{
-			$old = static::ownItem($own, $id) ?? $merged;
+			$old = static::ownItem($own, $id);
+			if($old === null)
+			{
+				// своё удалили, пока шёл вызов, — не воскрешать из кеша; модульное — своей копией
+				if(($merged['source'] ?? '') === Announcements::SOURCE_SETTINGS)
+				{
+					throw new RestException('Not found', 'NOT_FOUND', \CRestServer::STATUS_NOT_FOUND);
+				}
+				$old = $merged;
+			}
 			$old['published'] = max((int)($old['published'] ?? 0), (int)($merged['published'] ?? 0));
 			$item = Announcements::stored($old);
 			$item['active'] = false;

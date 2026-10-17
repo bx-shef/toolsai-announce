@@ -34,9 +34,10 @@ final class OwnStore
 
 	/**
 	 * Прочитать, изменить и записать под блокировкой. $change получает свежий
-	 * список — прямо из БД (Option::getRealValue(): Option::get() отдаёт копию,
-	 * прочитанную в этом хите раньше) — и возвращает новый или null — тогда
-	 * ничего не пишется. Блокировку не взять за 5 секунд — \RuntimeException,
+	 * список — запросом к b_option (fresh()): Option::get() отдаёт копию,
+	 * прочитанную в этом хите раньше, а getRealValue() ищет значение сайта, а
+	 * не общее, — пустой список стёр бы все свои объявления. $change
+	 * возвращает новый список или null — тогда ничего не пишется. Блокировку не взять за 5 секунд — \RuntimeException,
 	 * без записи.
 	 *
 	 * @param callable(list<array>): (list<array>|null) $change
@@ -51,7 +52,7 @@ final class OwnStore
 		}
 		try
 		{
-			$list = $change(Announcements::parse(Option::getRealValue(Constants::MODULE_ID, Constants::OPTION_LIST)));
+			$list = $change(Announcements::parse(static::fresh($connection)));
 			if($list !== null)
 			{
 				static::save($list);
@@ -63,5 +64,26 @@ final class OwnStore
 		{
 			$connection?->unlock(self::LOCK);
 		}
+	}
+
+	/**
+	 * Общее (не сайта) значение ANNOUNCE_list прямо из таблицы b_option, мимо
+	 * кеша хита. Без соединения (тесты без БД) или строки не нашлось —
+	 * Option::get(): пустым список не считаем никогда — запись пустого стёрла
+	 * бы все свои объявления.
+	 */
+	private static function fresh(?object $connection): string
+	{
+		if($connection === null)
+		{
+			return (string)Option::get(Constants::MODULE_ID, Constants::OPTION_LIST, '');
+		}
+		$sql = $connection->getSqlHelper();
+		$row = $connection->query(
+			"SELECT VALUE FROM b_option WHERE MODULE_ID = '".$sql->forSql(Constants::MODULE_ID)."'"
+			." AND NAME = '".$sql->forSql(Constants::OPTION_LIST)."' AND (SITE_ID IS NULL OR SITE_ID IN ('', '-'))"
+		)->fetch();
+
+		return is_array($row) && (string)$row['VALUE'] !== '' ? (string)$row['VALUE'] : (string)Option::get(Constants::MODULE_ID, Constants::OPTION_LIST, '');
 	}
 }

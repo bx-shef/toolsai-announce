@@ -75,7 +75,7 @@ return [
 					'sort' => 100,
 				],
 			],
-			// REST-методы оповещений для MCP-сервера toolsai-mcp (1.5.0): область
+			// REST-методы оповещений для MCP-сервера toolsai-mcp (1.6.0): область
 			// shef_announce, манифест shef.announce.mcp.tools. Событие rest —
 			// старого вида (GetModuleEvents), как у calendar: isCompatible.
 			[

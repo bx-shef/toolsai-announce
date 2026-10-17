@@ -25,12 +25,23 @@ namespace Bitrix\Main
 	{
 		public static array $locks = [];
 		public static bool $busy = false;
+		public static array $queries = [];
+		/** Значение в «БД», если отличается от кеша хита. */
+		public static ?string $db = null;
 
 		public static function getConnection(): object
 		{
 			return new class {
 				public function lock(string $name, int $timeout = 0): bool { Application::$locks[] = 'lock:'.$name; return !Application::$busy; }
 				public function unlock(string $name): bool { Application::$locks[] = 'unlock:'.$name; return true; }
+				public function getSqlHelper(): object { return new class { public function forSql(string $v): string { return addslashes($v); } }; }
+				/** b_option: общее значение — из «БД» (Option::$db), не из кеша хита (Option::$values). */
+				public function query(string $sql): object
+				{
+					Application::$queries[] = $sql;
+					$v = Application::$db ?? (\Bitrix\Main\Config\Option::$values['shef.toolsaiannounce']['ANNOUNCE_list'] ?? null);
+					return new class($v) { public function __construct(private $v) {} public function fetch() { return $this->v === null ? false : ['VALUE' => $this->v]; } };
+				}
 			};
 		}
 	}
@@ -58,6 +69,7 @@ use Bitrix\Main\Data\Cache;
 use Bitrix\Main\EventManager;
 use Bitrix\Main\EventResult;
 use Bitrix\Rest\RestException;
+use Shef\ToolsAiAnnounce\Announce\Collector;
 use Shef\ToolsAiAnnounce\Announce\McpTools;
 use Shef\ToolsAiAnnounce\Announce\OwnStore;
 use Shef\ToolsAiAnnounce\Integration\Rest\Service;
@@ -167,6 +179,24 @@ Check::same('правка его же — с проверкой', $call('update'
 // правка поверх списка в БД, а не прочитанного раньше
 $call('update', ['id' => 'vid-1', 'video' => 'https://youtu.be/dQw4w9WgXcQ']);
 Check::same('правка собрана внутри блокировки', OwnStore::load()[0]['video'], 'https://youtu.be/dQw4w9WgXcQ');
+
+// свежее из БД, а не из кеша хита: другой процесс уже дописал своё
+$cached = OwnStore::load();
+\Bitrix\Main\Application::$db = (string)json_encode(array_merge($cached, [['id' => 'other-proc', 'title' => 'Из другого процесса']]));
+$call('create', ['title' => 'Параллельное', 'audience' => 'test']);
+\Bitrix\Main\Application::$db = null;
+Check::same('под блокировкой — список из b_option, чужая запись не потеряна', in_array('other-proc', array_column(OwnStore::load(), 'id'), true), true);
+Check::same('читается общее значение, не сайта', str_contains((string)end(\Bitrix\Main\Application::$queries), "SITE_ID IS NULL OR SITE_ID IN ('', '-')"), true);
+
+// своё удалили, пока шёл вызов: выключение не воскрешает его из кеша
+$snapshot = OwnStore::load();
+Cache::$store = [];
+Collector::collectWithConflicts();
+\Bitrix\Main\Application::$db = (string)json_encode(array_values(array_filter($snapshot, static fn(array $i): bool => $i['id'] !== 'vid-1')));
+Check::same('удалённое своё — Not found', $call('disable', ['id' => 'vid-1'])['message'] ?? '', 'Not found');
+\Bitrix\Main\Application::$db = null;
+
+Check::same('showToNew «false» формой — не true', McpTools::fields(['showToNew' => 'false'], null)['showToNew'], false);
 
 RestAs::$right = 'R';
 Check::same('изменить с R — отказ', $call('update', ['id' => 'vid-1', 'title' => 'X'])['error'] ?? '', 'ACCESS_DENIED');
