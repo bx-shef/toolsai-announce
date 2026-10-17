@@ -56,7 +56,7 @@ $GLOBALS['APPLICATION'] = null;
 require $root.'/install/index.php';
 $module = new shef_toolsaiannounce();
 Check::same('MODULE_ID', $module->MODULE_ID, Constants::MODULE_ID);
-Check::same('версия из version.php', $module->MODULE_VERSION, '1.3.0');
+Check::same('версия из version.php', $module->MODULE_VERSION, '1.4.0');
 $module->InstallEvents();
 $handler = ['main', 'OnEpilog', Constants::MODULE_ID, $event['to']['class'], 'handle'];
 Check::same('InstallEvents регистрирует OnEpilog', \Bitrix\Main\EventManager::$registered, [$handler]);
@@ -78,7 +78,7 @@ Check::group('контроллер');
 Check::same('defaultNamespace', $value('controllers')['defaultNamespace'], '\\Shef\\ToolsAiAnnounce\\Controller');
 Check::same('действие отметки', Constants::SEEN_ACTION, 'shef:toolsaiannounce.banner.seen');
 Check::same('файл контроллера на месте', is_file($root.'/lib/controller/banner.php'), true);
-Check::same('метод seenAction', str_contains((string)file_get_contents($root.'/lib/controller/banner.php'), 'public function seenAction(string $id)'), true);
+Check::same('метод seenAction', str_contains((string)file_get_contents($root.'/lib/controller/banner.php'), 'public function seenAction(string $id'), true);
 
 Check::group('коды настроек');
 $shef_toolsaiannounce_default_option = null;

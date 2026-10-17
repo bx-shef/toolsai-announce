@@ -15,7 +15,11 @@
  * * installDir -> пусто: в /bitrix/admin модуль не копирует, а ПИШЕТ одну
  *   заглушку страницы списка (Main\AdminPage)
  * * controllers -> ajax: shef:toolsaiannounce.banner.seen ->
- *   Shef\ToolsAiAnnounce\Controller\Banner::seenAction()
+ *   Shef\ToolsAiAnnounce\Controller\Banner::seenAction(); страница списка —
+ *   shef:toolsaiannounce.announcement.* (Controller\Announcement)
+ * * ui.entity-selector -> своя сущность shef-announce-place (поле «Где
+ *   показывать»); ядро читает ключ из .settings.php установленных модулей,
+ *   установщик для неё не нужен
  */
 
 return [
@@ -63,6 +67,21 @@ return [
 	],
 	'installDir' => [
 		'value' => [],
+		'readonly' => true,
+	],
+	// Окно выбора «Где показывать»: своя сущность ui.entity-selector.
+	'ui.entity-selector' => [
+		'value' => [
+			'entities' => [
+				[
+					'entityId' => 'shef-announce-place',
+					'provider' => [
+						'moduleId' => 'shef.toolsaiannounce',
+						'className' => '\\Shef\\ToolsAiAnnounce\\Integration\\Ui\\EntitySelector\\PlaceProvider',
+					],
+				],
+			],
+		],
 		'readonly' => true,
 	],
 	'controllers' => [

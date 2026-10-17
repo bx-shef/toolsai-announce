@@ -223,6 +223,8 @@ namespace Bitrix\Main
 		class Context
 		{
 			public static string $page = '/';
+			/** Адрес как в адресной строке; пусто — $page. */
+			public static string $uri = '';
 			public static bool $ajax = false;
 			/** @var array<string, string> */
 			public static array $params = [];
@@ -239,6 +241,11 @@ namespace Bitrix\Main
 					public function getRequestedPage(): string
 					{
 						return Context::$page;
+					}
+
+					public function getRequestUri(): string
+					{
+						return Context::$uri !== '' ? Context::$uri : Context::$page;
 					}
 
 					public function isAjaxRequest(): bool

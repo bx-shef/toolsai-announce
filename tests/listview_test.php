@@ -41,6 +41,20 @@ $ro = V::row($base, false);
 Check::same('без права записи — ни правки, ни удаления', [$ro['canEdit'], $ro['delete']], [false, null]);
 Check::same('id и заголовок — строки как есть (экранирует страница)', [V::row(['title' => '<b>'] + $base, true)['title'], $own['id']], ['<b>', 'a']);
 
+Check::group('меню «…» и места (1.4.0)');
+Check::same('своё: одинаковый набор, одно место', array_column($own['menu'], 'action'), ['again', 'toggle', 'delete']);
+Check::same('модульное: без удаления', array_column($mod['menu'], 'action'), ['again', 'toggle']);
+Check::same('без права записи — только «Показать мне снова»', array_column($ro['menu'], 'action'), ['again']);
+Check::same('включено — пункт «Выключить»', $own['menu'][1]['text'], 'Выключить');
+Check::same('удаление — с подтверждением', $own['menu'][2]['confirm'], $own['delete']['confirm']);
+Check::same('места — названиями', V::row(['places' => ['/crm/deal/', '/my/']] + $base, true, [['path' => '/crm/deal/', 'title' => 'CRM: сделки']])['places'], ['CRM: сделки', '/my/']);
+Check::same('без мест — /crm/', $own['places'], ['/crm/']);
+Check::same('подробности: период, повтор, новые', V::row(['dateFrom' => '2026-10-01', 'repeat' => 'days', 'repeatDays' => 3, 'showToNew' => true] + $base, true)['details'], ['с 2026-10-01', 'раз в 3 дн.', 'и новым сотрудникам']);
+Check::same('форма — без служебных ключей', array_key_exists('source', $own['form']), false);
+Check::same('картинка — путь через переданную функцию', V::rows([['image' => 5] + $base], true, [], static fn(int $id): string => '/upload/'.$id.'.png')[0]['image'], '/upload/5.png');
+Check::same('тестовые — по именам', V::testUsersText([1, 15], [1 => 'Иван Петров']), 'Иван Петров, #15');
+Check::same('тестовых нет — «никого»', V::testUsersText([], []), 'никого');
+
 Check::group('название и меню');
 Check::same('префикс [SH]', Constants::TITLE, '[SH] Оповещения для сотрудников');
 $menu = (string)file_get_contents($root.'/admin/menu.php');

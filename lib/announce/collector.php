@@ -97,8 +97,36 @@ final class Collector
 		$sources = static::fromResults(static::send($conflicts));
 		$merged = Announcements::merge($own, $sources);
 		$merged['conflicts'] = array_merge($conflicts, $merged['conflicts']);
+		$merged['items'] = static::withPublished($merged['items']);
 
 		return $merged;
+	}
+
+	/**
+	 * Дата публикации объявлениям без неё — из журнала первого появления
+	 * (SYS_firstseen, Announcements::fillPublished()). Новые id дописываются.
+	 *
+	 * @param list<array> $items
+	 * @return list<array>
+	 */
+	public static function withPublished(array $items): array
+	{
+		try
+		{
+			$log = json_decode((string)Option::get(Constants::MODULE_ID, Constants::OPTION_FIRST_SEEN, ''), true);
+			$filled = Announcements::fillPublished($items, is_array($log) ? array_map('intval', $log) : [], time());
+			if($filled['changed'])
+			{
+				// не больше 500 записей: старые уходят
+				Option::set(Constants::MODULE_ID, Constants::OPTION_FIRST_SEEN, (string)json_encode(array_slice($filled['firstSeen'], -500, null, true)));
+			}
+
+			return $filled['items'];
+		}
+		catch(\Throwable)
+		{
+			return $items;
+		}
 	}
 
 	/**
@@ -134,8 +162,20 @@ final class Collector
 	 */
 	private static function send(array &$errors): array
 	{
+		return static::sendEach(OnAnnouncementsCollectEvent::TYPE, static fn(string $moduleId): \Bitrix\Main\Event => new OnAnnouncementsCollectEvent($moduleId), $errors);
+	}
+
+	/**
+	 * Отправить событие модуля каждому модулю-подписчику отдельно.
+	 *
+	 * @param \Closure(string): \Bitrix\Main\Event $make событие для одного модуля
+	 * @param list<string> $errors сюда — сбои обработчиков
+	 * @return list<mixed> ответы обработчиков
+	 */
+	public static function sendEach(string $type, \Closure $make, array &$errors): array
+	{
 		$modules = [];
-		foreach(EventManager::getInstance()->findEventHandlers(Constants::MODULE_ID, OnAnnouncementsCollectEvent::TYPE) as $handler)
+		foreach(EventManager::getInstance()->findEventHandlers(Constants::MODULE_ID, $type) as $handler)
 		{
 			$moduleId = (string)($handler['TO_MODULE_ID'] ?? '');
 			if($moduleId !== '')
@@ -148,7 +188,7 @@ final class Collector
 		{
 			try
 			{
-				$event = new OnAnnouncementsCollectEvent($moduleId);
+				$event = $make($moduleId);
 				$event->send();
 				array_push($results, ...array_values($event->getResults()));
 			}

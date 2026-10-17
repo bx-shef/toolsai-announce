@@ -28,6 +28,18 @@ final class Constants
 	/** Личная настройка (CUserOptions): какие объявления пользователь видел. */
 	public const SEEN_OPTION = 'announce_seen';
 
+	/** Личная настройка (CUserOptions): время показа и «Понятно» по id (повторы, с 1.4.0). */
+	public const SEEN_AT_OPTION = 'announce_seen_at';
+
+	/** Журнал первого появления объявлений без даты публикации: JSON id => время (с 1.4.0). */
+	public const OPTION_FIRST_SEEN = 'SYS_firstseen';
+
+	/** Сущность окна выбора мест (ui.entity-selector, свой провайдер). */
+	public const PLACE_ENTITY = 'shef-announce-place';
+
+	/** Действия страницы списка для BX.ajax.runAction (Controller\Announcement). */
+	public const ACTION_PREFIX = 'shef:toolsaiannounce.announcement.';
+
 	/** Страница списка в административной части (заглушку пишет AdminPage). */
 	public const ADMIN_LIST_FILE = 'shef_toolsaiannounce_list.php';
 

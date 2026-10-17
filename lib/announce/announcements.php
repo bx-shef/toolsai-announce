@@ -5,8 +5,12 @@ namespace Shef\ToolsAiAnnounce\Announce;
 use Shef\ToolsAiAnnounce\Main\Constants;
 
 /**
- * «Оповещения для сотрудников»: объявления, которые сотрудник видит один раз
- * при открытии CRM — что появилось, зачем и ссылка на подробности.
+ * «Оповещения для сотрудников»: объявления, которые сотрудник видит окном —
+ * что появилось, зачем и ссылка на подробности. Где (places, по умолчанию
+ * /crm/ — Places), когда (dateFrom/dateTo), сколько раз (repeat), кому
+ * (audience, users/departments, новые сотрудники — published/showToNew) и в
+ * каком виде (layout, image, video, buttonColor) — поля объявления с 1.4.0;
+ * у старых объявлений — значения по умолчанию, поведение прежнее.
  *
  * Перенесено из shef.toolsai (Shef\ToolsAi\Announce\Announcements, 1.31.0–1.49)
  * без изменения смысла. Что изменилось при выносе:
@@ -28,10 +32,39 @@ final class Announcements
 {
 	public const AUDIENCE_TEST = 'test';
 	public const AUDIENCE_ALL = 'all';
-	public const AUDIENCES = [self::AUDIENCE_TEST => 'тестовые пользователи', self::AUDIENCE_ALL => 'все сотрудники'];
+	/** Выбранные сотрудники и отделы (поля users, departments). */
+	public const AUDIENCE_CUSTOM = 'custom';
+	public const AUDIENCES = [self::AUDIENCE_TEST => 'тестовые пользователи', self::AUDIENCE_ALL => 'все сотрудники', self::AUDIENCE_CUSTOM => 'выбранные сотрудники и отделы'];
+	/** Обычное окно (до 1.4.0 — «нарядное окно»). */
 	public const LAYOUT_COSMOS = 'cosmos';
+	/** Важное: акцентный цвет, закрыть можно только кнопкой «Понятно». */
+	public const LAYOUT_IMPORTANT = 'important';
+	/** Предупреждение: красное. */
+	public const LAYOUT_DANGER = 'danger';
+	/** Поздравление: праздничное оформление. */
+	public const LAYOUT_CONGRATS = 'congrats';
+	/** Обучающее видео: плеер в окне, кнопка «Посмотрел». */
+	public const LAYOUT_VIDEO = 'video';
 	public const LAYOUT_SLIDES = 'slides';
-	public const LAYOUTS = [self::LAYOUT_COSMOS => 'нарядное окно', self::LAYOUT_SLIDES => 'слайды «Что нового»'];
+	public const LAYOUTS = [
+		self::LAYOUT_COSMOS => 'обычное окно',
+		self::LAYOUT_IMPORTANT => 'важное',
+		self::LAYOUT_DANGER => 'предупреждение',
+		self::LAYOUT_CONGRATS => 'поздравление',
+		self::LAYOUT_VIDEO => 'обучающее видео',
+		self::LAYOUT_SLIDES => 'слайды «Что нового»',
+	];
+	/** Повтор: один раз. */
+	public const REPEAT_ONCE = 'once';
+	/** Повтор: на каждой подходящей странице, пока не нажмёт главную кнопку или «Понятно». */
+	public const REPEAT_UNTIL = 'until';
+	/** Повтор: раз в N дней (поле repeatDays). */
+	public const REPEAT_DAYS = 'days';
+	public const REPEATS = [self::REPEAT_ONCE => 'один раз', self::REPEAT_UNTIL => 'пока не нажмёт «Понятно»', self::REPEAT_DAYS => 'раз в N дней'];
+	/** Цвет главной кнопки: код => название. */
+	public const BUTTON_COLORS = ['violet' => 'фиолетовая', 'blue' => 'синяя', 'green' => 'зелёная', 'orange' => 'оранжевая', 'red' => 'красная'];
+	/** Порядок по умолчанию: меньше — раньше. */
+	public const DEFAULT_SORT = 500;
 	/** Сколько объявлений берём из одного источника: свой список или один модуль. */
 	public const MAX_ITEMS = 20;
 	public const MAX_SEEN = 200;
@@ -92,8 +125,12 @@ final class Announcements
 	/**
 	 * Поля объявления в допустимых пределах; без id или заголовка — null.
 	 *
+	 * Поля, которых не было до 1.4.0, у старых объявлений получают значения
+	 * по умолчанию — поведение прежнее: places [/crm/], repeat once, без
+	 * периода, без картинки и видео, sort 500, кнопка фиолетовая.
+	 *
 	 * @param array<string, mixed> $item
-	 * @return array{id: string, title: string, text: string, url: string, linkText: string, audience: string, active: bool, layout: string}|null
+	 * @return array<string, mixed>|null
 	 */
 	public static function normalize(array $item): ?array
 	{
@@ -105,6 +142,11 @@ final class Announcements
 		}
 		$str = static fn(string $key): string => trim(is_scalar($item[$key] ?? null) ? (string)$item[$key] : '');
 		$url = $str('url');
+		$layout = (string)($item['layout'] ?? '');
+		$repeat = (string)($item['repeat'] ?? '');
+		$color = (string)($item['buttonColor'] ?? '');
+		$audience = (string)($item['audience'] ?? '');
+		$video = $str('video');
 
 		return [
 			'id' => $id,
@@ -112,10 +154,201 @@ final class Announcements
 			'text' => mb_substr($str('text'), 0, 2000),
 			'url' => preg_match('~^https://[^\s"\'<>]+$~', $url) ? $url : '',
 			'linkText' => mb_substr($str('linkText'), 0, 60) ?: 'Подробнее',
-			'audience' => ($item['audience'] ?? '') === self::AUDIENCE_ALL ? self::AUDIENCE_ALL : self::AUDIENCE_TEST,
+			'audience' => isset(self::AUDIENCES[$audience]) ? $audience : self::AUDIENCE_TEST,
 			'active' => !empty($item['active']),
-			'layout' => ($item['layout'] ?? '') === self::LAYOUT_SLIDES ? self::LAYOUT_SLIDES : self::LAYOUT_COSMOS,
+			'layout' => isset(self::LAYOUTS[$layout]) ? $layout : self::LAYOUT_COSMOS,
+			'places' => Places::normalizeList($item['places'] ?? null),
+			'users' => static::ids($item['users'] ?? null),
+			'departments' => static::ids($item['departments'] ?? null),
+			'dateFrom' => static::date($item['dateFrom'] ?? null),
+			'dateTo' => static::date($item['dateTo'] ?? null),
+			'sort' => is_numeric($item['sort'] ?? null) ? max(0, min(9999, (int)$item['sort'])) : self::DEFAULT_SORT,
+			'repeat' => isset(self::REPEATS[$repeat]) ? $repeat : self::REPEAT_ONCE,
+			'repeatDays' => is_numeric($item['repeatDays'] ?? null) ? max(1, min(365, (int)$item['repeatDays'])) : 7,
+			'buttonColor' => isset(self::BUTTON_COLORS[$color]) ? $color : 'violet',
+			'image' => is_numeric($item['image'] ?? null) ? max(0, (int)$item['image']) : 0,
+			'video' => Media::video($video) !== null ? $video : '',
+			'published' => static::stamp($item['published'] ?? null),
+			'showToNew' => array_key_exists('showToNew', $item) ? !empty($item['showToNew']) : ($layout === self::LAYOUT_VIDEO),
 		];
+	}
+
+	/**
+	 * Ошибки полей формы — по-русски, для окна правки. Пусто — можно
+	 * сохранять (normalize() всё равно приведёт поля к пределам).
+	 *
+	 * @param array<string, mixed> $fields
+	 * @return list<string>
+	 */
+	public static function validate(array $fields): array
+	{
+		$str = static fn(string $key): string => trim(is_scalar($fields[$key] ?? null) ? (string)$fields[$key] : '');
+		$errors = [];
+		if($str('title') === '')
+		{
+			$errors[] = 'Укажите заголовок.';
+		}
+		elseif(mb_strlen($str('title')) > 120)
+		{
+			$errors[] = 'Заголовок длиннее 120 символов.';
+		}
+		if(mb_strlen($str('text')) > 2000)
+		{
+			$errors[] = 'Текст длиннее 2000 символов.';
+		}
+		if($str('id') !== '' && !preg_match(self::ID_PATTERN, strtolower($str('id'))))
+		{
+			$errors[] = 'Код объявления — латиница, цифры и дефис, до 40 знаков.';
+		}
+		if($str('url') !== '' && !preg_match('~^https://[^\s"\'<>]+$~', $str('url')))
+		{
+			$errors[] = 'Ссылка должна начинаться с https://';
+		}
+		$bad = Places::invalid($fields['places'] ?? []);
+		if($bad !== [])
+		{
+			$errors[] = 'Неверный адрес в «Где показывать»: '.implode(', ', $bad).'. Адрес начинается с «/», например /crm/deal/.';
+		}
+		if(is_array($fields['places'] ?? null) && count($fields['places']) > Places::MAX_PER_ITEM)
+		{
+			$errors[] = 'Мест показа — не больше '.Places::MAX_PER_ITEM.'.';
+		}
+		foreach(['dateFrom' => 'начала', 'dateTo' => 'окончания'] as $key => $what)
+		{
+			if($str($key) !== '' && static::date($str($key)) === '')
+			{
+				$errors[] = 'Дата '.$what.' — в виде ГГГГ-ММ-ДД.';
+			}
+		}
+		if(static::date($str('dateFrom')) !== '' && static::date($str('dateTo')) !== '' && static::date($str('dateFrom')) > static::date($str('dateTo')))
+		{
+			$errors[] = 'Дата начала позже даты окончания.';
+		}
+		if($str('video') !== '' && Media::video($str('video')) === null)
+		{
+			$errors[] = 'Видео: нужна https-ссылка на YouTube, Rutube, VK Видео или файл .mp4.';
+		}
+		if(($fields['layout'] ?? '') === self::LAYOUT_VIDEO && $str('video') === '')
+		{
+			$errors[] = 'Для вида «обучающее видео» укажите ссылку на видео.';
+		}
+		if(($fields['audience'] ?? '') === self::AUDIENCE_CUSTOM && static::ids($fields['users'] ?? null) === [] && static::ids($fields['departments'] ?? null) === [])
+		{
+			$errors[] = 'Выберите сотрудников или отделы.';
+		}
+
+		return $errors;
+	}
+
+	/**
+	 * Своё объявление — в список: тот же id заменяется на месте, новый —
+	 * в конец. Больше MAX_ITEMS — null.
+	 *
+	 * @param list<array> $own
+	 * @return list<array>|null
+	 */
+	public static function upsert(array $own, array $item): ?array
+	{
+		$found = false;
+		foreach($own as $i => $old)
+		{
+			if(($old['id'] ?? null) === $item['id'])
+			{
+				$own[$i] = $item;
+				$found = true;
+			}
+		}
+		if(!$found)
+		{
+			$own[] = $item;
+		}
+
+		return count($own) > self::MAX_ITEMS ? null : array_values($own);
+	}
+
+	/**
+	 * Список без объявления с этим id.
+	 *
+	 * @param list<array> $own
+	 * @return list<array>
+	 */
+	public static function remove(array $own, string $id): array
+	{
+		return array_values(array_filter($own, static fn(array $i): bool => ($i['id'] ?? null) !== $id));
+	}
+
+	/**
+	 * Дата публикации своего объявления при сохранении: уже есть — та же;
+	 * нет и объявление включено — сейчас (создание или первое включение);
+	 * выключено — пока нет.
+	 */
+	public static function publishedOnSave(array $item, ?array $old, int $now): int
+	{
+		$was = (int)($old['published'] ?? 0);
+		if($was > 0)
+		{
+			return $was;
+		}
+
+		return !empty($item['active']) ? $now : 0;
+	}
+
+	/** Поля для своего списка: без служебных ключей слияния (source, overrides). */
+	public static function stored(array $item): array
+	{
+		unset($item['source'], $item['overrides']);
+
+		return $item;
+	}
+
+	/**
+	 * Дата ГГГГ-ММ-ДД или пусто.
+	 */
+	public static function date(mixed $value): string
+	{
+		$value = is_scalar($value) ? trim((string)$value) : '';
+		if(!preg_match('/^(\d{4})-(\d{2})-(\d{2})$/', $value, $m) || !checkdate((int)$m[2], (int)$m[3], (int)$m[1]))
+		{
+			return '';
+		}
+
+		return $value;
+	}
+
+	/**
+	 * Время (метка Unix) из числа или строки даты («2026-10-17», «2026-10-17 10:00»); иначе 0.
+	 */
+	public static function stamp(mixed $value): int
+	{
+		if(is_numeric($value))
+		{
+			return max(0, (int)$value);
+		}
+		if(is_string($value) && preg_match('/^\d{4}-\d{2}-\d{2}( \d{2}:\d{2}(:\d{2})?)?$/', trim($value)))
+		{
+			return max(0, (int)strtotime(trim($value)));
+		}
+
+		return 0;
+	}
+
+	/**
+	 * Положительные целые без повторов (ID сотрудников и отделов), не больше 100.
+	 *
+	 * @return list<int>
+	 */
+	public static function ids(mixed $value): array
+	{
+		$ids = [];
+		foreach(is_array($value) ? $value : [] as $v)
+		{
+			if(is_numeric($v) && (int)$v > 0)
+			{
+				$ids[(int)$v] = (int)$v;
+			}
+		}
+
+		return array_slice(array_values($ids), 0, 100);
 	}
 
 	/**
@@ -270,26 +503,26 @@ final class Announcements
 	}
 
 	/**
-	 * Первое активное непросмотренное объявление, доступное пользователю.
+	 * Первое объявление, которое пора показать пользователю (isDue()), по
+	 * порядку sort, при равном — как в списке.
 	 *
 	 * @param list<array> $items
-	 * @param list<string> $seen
+	 * @param list<string> $seen id из отметки «видел» (старый вид отметок)
 	 * @param list<int> $testUsers
+	 * @param array{now?: int, stamps?: array<string, array{t?: int, ok?: bool}>, departments?: list<int>, registered?: int} $ctx
+	 *   now — текущее время; stamps — когда показали и нажал ли «Понятно»;
+	 *   departments — отделы пользователя; registered — дата регистрации (0 — не знаем)
 	 */
-	public static function pick(array $items, array $seen, int $userId, array $testUsers): ?array
+	public static function pick(array $items, array $seen, int $userId, array $testUsers, array $ctx = []): ?array
 	{
 		if($userId <= 0)
 		{
 			return null;
 		}
 		$seen = array_flip(array_map('strval', $seen));
-		foreach($items as $item)
+		foreach(static::sorted($items) as $item)
 		{
-			if(!$item['active'] || isset($seen[$item['id']]))
-			{
-				continue;
-			}
-			if($item['audience'] === self::AUDIENCE_ALL || in_array($userId, $testUsers, true))
+			if(static::isDue($item, isset($seen[$item['id']]), $ctx) && static::isFor($item, $userId, $testUsers, $ctx))
 			{
 				return $item;
 			}
@@ -298,31 +531,132 @@ final class Announcements
 		return null;
 	}
 
+	/** Объявления по sort (меньше — раньше), при равном — как в списке. */
+	public static function sorted(array $items): array
+	{
+		$i = 0;
+		$keyed = array_map(static function(array $item) use (&$i): array { return [(int)($item['sort'] ?? self::DEFAULT_SORT), $i++, $item]; }, $items);
+		usort($keyed, static fn(array $a, array $b): int => [$a[0], $a[1]] <=> [$b[0], $b[1]]);
+
+		return array_column($keyed, 2);
+	}
+
+	/**
+	 * Пора ли показывать: включено, в периоде, и повтор разрешает.
+	 *
+	 *  * once — пока нет отметки «видел»;
+	 *  * until — пока не нажал главную кнопку или «Понятно» (stamps[id].ok);
+	 *  * days — не было показа или с прошлого прошло repeatDays дней; нажал
+	 *    «Понятно» — тоже через N дней снова.
+	 *
+	 * Период: dateFrom с начала дня, dateTo — до конца дня (время сервера).
+	 */
+	public static function isDue(array $item, bool $seen, array $ctx = []): bool
+	{
+		if(empty($item['active']))
+		{
+			return false;
+		}
+		$now = (int)($ctx['now'] ?? time());
+		$from = (string)($item['dateFrom'] ?? '');
+		$to = (string)($item['dateTo'] ?? '');
+		if(($from !== '' && $now < (int)strtotime($from.' 00:00:00')) || ($to !== '' && $now > (int)strtotime($to.' 23:59:59')))
+		{
+			return false;
+		}
+		$stamp = $ctx['stamps'][$item['id']] ?? null;
+		$stamp = is_array($stamp) ? $stamp : null;
+
+		return match((string)($item['repeat'] ?? self::REPEAT_ONCE))
+		{
+			self::REPEAT_UNTIL => empty($stamp['ok']),
+			self::REPEAT_DAYS => $stamp === null || $now - (int)($stamp['t'] ?? 0) >= max(1, (int)($item['repeatDays'] ?? 7)) * 86400,
+			default => !$seen,
+		};
+	}
+
+	/**
+	 * Для этого ли пользователя: аудитория и «новые сотрудники».
+	 *
+	 * Сотрудник, зарегистрированный позже публикации объявления (published),
+	 * его не видит — если у объявления не включено showToNew. Не знаем дату
+	 * регистрации или публикации — показываем.
+	 */
+	public static function isFor(array $item, int $userId, array $testUsers, array $ctx = []): bool
+	{
+		$registered = (int)($ctx['registered'] ?? 0);
+		$published = (int)($item['published'] ?? 0);
+		if(empty($item['showToNew']) && $registered > 0 && $published > 0 && $registered > $published)
+		{
+			return false;
+		}
+
+		return match((string)($item['audience'] ?? self::AUDIENCE_TEST))
+		{
+			self::AUDIENCE_ALL => true,
+			self::AUDIENCE_CUSTOM => in_array($userId, (array)($item['users'] ?? []), true)
+				|| array_intersect(array_map('intval', (array)($item['departments'] ?? [])), array_map('intval', (array)($ctx['departments'] ?? []))) !== [],
+			default => in_array($userId, $testUsers, true),
+		};
+	}
+
+	/**
+	 * Дата публикации для включённых объявлений без неё: из журнала первого появления
+	 * (id => время), а кого там нет — $now, и он дописывается в журнал. Так
+	 * старые объявления после обновления получают дату «сейчас» и
+	 * сотрудникам, которые уже работают, не пропадают.
+	 *
+	 * @param list<array> $items
+	 * @param array<string, int> $firstSeen
+	 * @return array{items: list<array>, firstSeen: array<string, int>, changed: bool}
+	 */
+	public static function fillPublished(array $items, array $firstSeen, int $now): array
+	{
+		$changed = false;
+		foreach($items as $i => $item)
+		{
+			// выключенное ещё не опубликовано: дата — при первом включении
+			if((int)($item['published'] ?? 0) > 0 || empty($item['active']))
+			{
+				continue;
+			}
+			$id = (string)$item['id'];
+			if(!isset($firstSeen[$id]) || (int)$firstSeen[$id] <= 0)
+			{
+				$firstSeen[$id] = $now;
+				$changed = true;
+			}
+			$items[$i]['published'] = (int)$firstSeen[$id];
+		}
+
+		return ['items' => $items, 'firstSeen' => $firstSeen, 'changed' => $changed];
+	}
+
 	/**
 	 * Что показать за один заход: первая доступная новинка решает вид.
-	 * Нарядное окно — одна новинка; слайды — все доступные новинки-слайды разом.
+	 * Одно окно любого вида, кроме слайдов; слайды — все доступные слайды разом.
 	 *
 	 * @param list<array> $items
 	 * @param list<string> $seen
 	 * @param list<int> $testUsers
 	 * @return array{layout: string, items: list<array>}|null
 	 */
-	public static function plan(array $items, array $seen, int $userId, array $testUsers): ?array
+	public static function plan(array $items, array $seen, int $userId, array $testUsers, array $ctx = []): ?array
 	{
 		$available = [];
-		$rest = $seen;
-		while(($item = static::pick($items, $rest, $userId, $testUsers)) !== null)
+		$rest = $items;
+		while(($item = static::pick($rest, $seen, $userId, $testUsers, $ctx)) !== null)
 		{
 			$available[] = $item;
-			$rest[] = $item['id'];
+			$rest = array_values(array_filter($rest, static fn(array $i): bool => $i['id'] !== $item['id']));
 		}
 		if($available === [])
 		{
 			return null;
 		}
-		if($available[0]['layout'] === self::LAYOUT_COSMOS)
+		if($available[0]['layout'] !== self::LAYOUT_SLIDES)
 		{
-			return ['layout' => self::LAYOUT_COSMOS, 'items' => [$available[0]]];
+			return ['layout' => $available[0]['layout'], 'items' => [$available[0]]];
 		}
 
 		return ['layout' => self::LAYOUT_SLIDES, 'items' => array_values(array_filter($available, static fn(array $i): bool => $i['layout'] === self::LAYOUT_SLIDES))];
@@ -343,6 +677,32 @@ final class Announcements
 	}
 
 	/**
+	 * Адрес своей картинки для окна: только путь портала от корня (его отдаёт
+	 * CFile::GetPath) или https; иначе пусто.
+	 */
+	public static function imageSrc(string $src): string
+	{
+		return preg_match('~^(?:/(?!/)|https://)[^\s"\'<>`\\\\]+$~', $src) ? $src : '';
+	}
+
+	/**
+	 * Отметка показа для повторов: время показа и нажал ли «Понятно».
+	 * «Понятно» не снимается следующим показом; повторный показ раз в N дней
+	 * обновляет время. Не больше MAX_SEEN записей — самые старые уходят.
+	 *
+	 * @param array<string, array{t?: int, ok?: bool}> $stamps
+	 * @return array<string, array{t: int, ok: bool}>
+	 */
+	public static function markStamp(array $stamps, string $id, int $now, bool $ok): array
+	{
+		$old = is_array($stamps[$id] ?? null) ? $stamps[$id] : [];
+		unset($stamps[$id]);
+		$stamps[$id] = ['t' => $now, 'ok' => $ok || !empty($old['ok'])];
+
+		return array_slice($stamps, -self::MAX_SEEN, null, true);
+	}
+
+	/**
 	 * Скрипт показа: встаёт в штатную очередь баннеров Битрикс24 (ui.banner-dispatcher),
 	 * чтобы не открываться поверх чужих окон. Вид — нарядное окно (светлая карточка со своей картинкой)
 	 * или штатное «Что нового» (ui.dialogs.whats-new). Текст экранирован.
@@ -354,7 +714,12 @@ final class Announcements
 		$json = static fn(mixed $v): string => (string)json_encode($v, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT);
 		$data = $json([
 			'layout' => $plan['layout'],
-			'items' => array_map(static fn(array $i): array => ['id' => $i['id'], 'title' => $i['title'], 'text' => $i['text'], 'url' => $i['url'], 'linkText' => $i['linkText']], $plan['items']),
+			'items' => array_map(static fn(array $i): array => [
+				'id' => $i['id'], 'title' => $i['title'], 'text' => $i['text'], 'url' => $i['url'], 'linkText' => $i['linkText'],
+				'buttonColor' => isset(self::BUTTON_COLORS[$i['buttonColor'] ?? '']) ? $i['buttonColor'] : 'violet',
+				'image' => static::imageSrc((string)($i['imageSrc'] ?? '')),
+				'video' => ($i['layout'] ?? '') === self::LAYOUT_VIDEO ? Media::video((string)($i['video'] ?? '')) : null,
+			], $plan['items']),
 		]);
 		$action = $json(Constants::SEEN_ACTION);
 
@@ -363,7 +728,7 @@ final class Announcements
 var P = {$data};
 if(window.top !== window || !window.BX) { return; }
 function esc(s){ return String(s).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
-function seen(){ P.items.forEach(function(a){ BX.ajax.runAction({$action}, {data: {id: a.id}}); }); }
+function seen(ok){ P.items.forEach(function(a){ BX.ajax.runAction({$action}, {data: ok ? {id: a.id, ok: 'Y'} : {id: a.id}}); }); }
 function split(text){
 	var intro = [], points = [];
 	String(text).split('\\n').forEach(function(l){ l = l.trim(); if(!l) { return; } if(l.indexOf('• ') === 0) { points.push(l.slice(2)); } else { intro.push(l); } });
@@ -388,35 +753,64 @@ var ART = '<svg viewBox="0 0 560 190" xmlns="http://www.w3.org/2000/svg" aria-hi
 	+ '<circle cx="392" cy="150" r="30" fill="url(#shefAnnAi)"/><circle cx="392" cy="150" r="35" fill="none" stroke="#9b7bff" stroke-opacity=".25" stroke-width="6"/>'
 	+ '<path d="M392 134l4 10 10 4-10 4-4 10-4-10-10-4 10-4z" fill="#fff"/><path d="M406 132l1.6 3.8 3.8 1.6-3.8 1.6-1.6 3.8-1.6-3.8-3.8-1.6 3.8-1.6z" fill="#fff" opacity=".85"/>'
 	+ '</svg>';
+var CONF = '<svg viewBox="0 0 560 190" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">'
+	+ '<g opacity=".9"><rect x="40" y="30" width="10" height="18" rx="2" fill="#ff5752" transform="rotate(20 45 39)"/><rect x="120" y="140" width="10" height="18" rx="2" fill="#2fc6f6" transform="rotate(-25 125 149)"/>'
+	+ '<rect x="470" y="40" width="10" height="18" rx="2" fill="#ffa900" transform="rotate(35 475 49)"/><rect x="500" y="130" width="10" height="18" rx="2" fill="#9dcf00" transform="rotate(-15 505 139)"/>'
+	+ '<circle cx="90" cy="70" r="6" fill="#ffa900"/><circle cx="430" cy="150" r="6" fill="#ff5752"/><circle cx="200" cy="30" r="5" fill="#9dcf00"/><circle cx="370" cy="35" r="5" fill="#2fc6f6"/>'
+	+ '<circle cx="250" cy="165" r="4" fill="#8a6cff"/><circle cx="160" cy="110" r="4" fill="#ff5752"/><circle cx="400" cy="95" r="4" fill="#9dcf00"/></g>'
+	+ '<path d="M250 140l30-90 30 90z" fill="#ffd166"/><path d="M262 104h36M256 122h48" stroke="#ff8c42" stroke-width="6"/><circle cx="280" cy="48" r="9" fill="#ff5752"/>'
+	+ '<path d="M330 70c20-30 50-30 60-10M230 70c-20-30-50-30-60-10" stroke="#8a6cff" stroke-width="4" fill="none" stroke-linecap="round"/>'
+	+ '</svg>';
+var KIND = {
+	cosmos: {eye: '✦ Новое', cls: ''},
+	important: {eye: '! Важно', cls: ' --important', strict: true},
+	danger: {eye: '⚠ Внимание', cls: ' --danger'},
+	congrats: {eye: '🎉 Поздравляем', cls: ' --congrats', art: CONF},
+	video: {eye: '▶ Обучающее видео', cls: ' --video', ok: 'Посмотрел'}
+};
 var CSS = '.shef-ann-wrap{background:transparent!important;box-shadow:none!important}'
-	+ '.shef-ann{width:560px;max-width:calc(100vw - 32px);max-height:calc(100vh - 48px);overflow-y:auto;box-sizing:border-box;background:#fff;border-radius:20px;box-shadow:0 12px 40px rgba(31,22,77,.22);font-family:var(--ui-font-family-primary,"Open Sans",sans-serif);color:#333}'
+	+ '.shef-ann{width:560px;max-width:calc(100vw - 32px);max-height:calc(100vh - 48px);overflow-y:auto;box-sizing:border-box;background:#fff;border-radius:20px;box-shadow:0 12px 40px rgba(31,22,77,.22);font-family:var(--ui-font-family-primary,"Open Sans",sans-serif);color:#333;border-top:6px solid transparent}'
+	+ '.shef-ann.--video{width:720px}'
 	+ '.shef-ann-head{position:relative;padding:22px 28px 0}'
 	+ '.shef-ann-eye{display:inline-block;font-size:12px;font-weight:600;color:#5b3fd6;background:#f1ecff;border-radius:10px;padding:3px 10px;margin-bottom:10px}'
+	+ '.shef-ann.--important{border-top-color:#ffa900}.shef-ann.--important .shef-ann-eye{color:#8a5a00;background:#fff3d6}'
+	+ '.shef-ann.--danger{border-top-color:#ff5752}.shef-ann.--danger .shef-ann-eye{color:#c21b17;background:#ffe8e8}.shef-ann.--danger .shef-ann-art{background:#fff1f1}'
+	+ '.shef-ann.--congrats .shef-ann-eye{color:#b04a00;background:#fff0e0}.shef-ann.--congrats .shef-ann-art{background:linear-gradient(135deg,#fff7e6 0%,#fdeefe 100%)}'
+	+ '.shef-ann.--video .shef-ann-eye{color:#0b66c3;background:#e5f3ff}'
 	+ '.shef-ann-t{font-size:22px;font-weight:600;line-height:1.25;color:#1f2433;padding-right:28px}'
 	+ '.shef-ann-x{position:absolute;right:16px;top:16px;width:32px;height:32px;border:0;border-radius:50%;background:transparent;color:#a8adb4;font-size:22px;line-height:32px;cursor:pointer}.shef-ann-x:hover{background:#f2f2f5;color:#525c69}'
-	+ '.shef-ann-art{margin:16px 28px 0;border-radius:14px;background:linear-gradient(135deg,#f6f2ff 0%,#eef5ff 100%);overflow:hidden}.shef-ann-art svg{display:block;width:100%;height:auto}'
+	+ '.shef-ann-art{margin:16px 28px 0;border-radius:14px;background:linear-gradient(135deg,#f6f2ff 0%,#eef5ff 100%);overflow:hidden}.shef-ann-art svg,.shef-ann-art img{display:block;width:100%;height:auto}.shef-ann-art img{max-height:300px;object-fit:cover}'
+	+ '.shef-ann-video{position:relative;padding-top:56.25%;background:#000}.shef-ann-video iframe,.shef-ann-video video{position:absolute;inset:0;width:100%;height:100%;border:0}'
 	+ '.shef-ann-b{padding:18px 28px 0;font-size:14px;line-height:1.55;color:#525c69}.shef-ann-b p{margin:0 0 12px}'
 	+ '.shef-ann-b ul{list-style:none;margin:0 0 4px;padding:0;display:flex;flex-direction:column;gap:10px}'
 	+ '.shef-ann-b li{position:relative;padding-left:30px;color:#333}'
 	+ '.shef-ann-b li:before{content:"✓";position:absolute;left:0;top:1px;width:20px;height:20px;border-radius:50%;background:#e3f7ef;color:#1fa37a;font-size:12px;font-weight:700;line-height:20px;text-align:center}'
 	+ '.shef-ann-btns{display:flex;justify-content:flex-end;gap:10px;flex-wrap:wrap;padding:20px 28px 24px}'
-	+ '.shef-ann-btn{border:0;border-radius:10px;padding:11px 20px;font-family:inherit;font-size:14px;font-weight:600;cursor:pointer;transition:filter .15s}.shef-ann-btn:hover{filter:brightness(1.07)}'
-	+ '.shef-ann-btn.--main{background:linear-gradient(135deg,#8a6cff,#5b3fd6);color:#fff;box-shadow:0 4px 12px rgba(91,63,214,.3)}'
-	+ '.shef-ann-btn.--ok{background:#1fa37a;color:#fff}.shef-ann-btn.--ok.--soft{background:#e3f7ef;color:#137a5a}'
+	+ '.shef-ann-btn{border:0;border-radius:10px;padding:11px 20px;font-family:inherit;font-size:14px;font-weight:600;cursor:pointer;transition:filter .15s;color:#fff}.shef-ann-btn:hover{filter:brightness(1.07)}'
+	+ '.shef-ann-btn.--violet{background:linear-gradient(135deg,#8a6cff,#5b3fd6);box-shadow:0 4px 12px rgba(91,63,214,.3)}'
+	+ '.shef-ann-btn.--blue{background:#2fc6f6}.shef-ann-btn.--green{background:#1fa37a}.shef-ann-btn.--orange{background:#ffa900}.shef-ann-btn.--red{background:#ff5752}'
+	+ '.shef-ann-btn.--ok{background:#1fa37a}.shef-ann-btn.--ok.--soft{background:#e3f7ef;color:#137a5a}'
 	+ '.shef-ann-btn:focus-visible{outline:3px solid #b9a6ff;outline-offset:2px}'
 	+ '@media (max-width:520px){.shef-ann-head,.shef-ann-b{padding-left:20px;padding-right:20px}.shef-ann-art{margin:14px 20px 0}.shef-ann-btns{padding:18px 20px 20px}.shef-ann-btn{flex:1}}';
+function media(a, k){
+	if(a.video && a.video.type === 'iframe') { return '<div class="shef-ann-video"><iframe src="' + esc(a.video.src) + '" allow="autoplay; encrypted-media; fullscreen; picture-in-picture" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe></div>'; }
+	if(a.video && a.video.type === 'mp4') { return '<div class="shef-ann-video"><video src="' + esc(a.video.src) + '" controls preload="metadata"></video></div>'; }
+	if(a.image) { return '<img src="' + esc(a.image) + '" alt="">'; }
+	return k.art || ART;
+}
 function cosmos(onDone){
 	var a = P.items[0];
+	var k = KIND[P.layout] || KIND.cosmos;
 	if(!document.getElementById('shef-ann-css')) { var st = document.createElement('style'); st.id = 'shef-ann-css'; st.textContent = CSS; document.head.appendChild(st); }
 	var root = document.createElement('div');
-	root.className = 'shef-ann';
-	root.innerHTML = '<div class="shef-ann-head"><div class="shef-ann-eye">✦ Новое в CRM</div>'
-		+ '<div class="shef-ann-t">' + esc(a.title) + '</div><button type="button" class="shef-ann-x" data-act="close" aria-label="Закрыть">×</button></div>'
-		+ '<div class="shef-ann-art">' + ART + '</div><div class="shef-ann-b">' + body(a) + '</div>'
-		+ '<div class="shef-ann-btns"><button type="button" class="shef-ann-btn --ok' + (a.url ? ' --soft' : '') + '" data-act="close">Понятно</button>'
-		+ (a.url ? '<button type="button" class="shef-ann-btn --main" data-act="link">' + esc(a.linkText) + '</button>' : '') + '</div>';
+	root.className = 'shef-ann' + k.cls;
+	root.innerHTML = '<div class="shef-ann-head"><div class="shef-ann-eye">' + esc(k.eye) + '</div>'
+		+ '<div class="shef-ann-t">' + esc(a.title) + '</div>' + (k.strict ? '' : '<button type="button" class="shef-ann-x" data-act="close" aria-label="Закрыть">×</button>') + '</div>'
+		+ '<div class="shef-ann-art">' + media(a, k) + '</div><div class="shef-ann-b">' + body(a) + '</div>'
+		+ '<div class="shef-ann-btns"><button type="button" class="shef-ann-btn --ok' + (a.url ? ' --soft' : '') + '" data-act="ok">' + esc(k.ok || 'Понятно') + '</button>'
+		+ (a.url ? '<button type="button" class="shef-ann-btn --' + esc(a.buttonColor) + '" data-act="link">' + esc(a.linkText) + '</button>' : '') + '</div>';
 	var popup = new BX.PopupWindow('shef-toolsai-announce', null, {
-		content: root, padding: 0, contentPadding: 0, className: 'shef-ann-wrap', closeIcon: false, closeByEsc: true, autoHide: false,
+		content: root, padding: 0, contentPadding: 0, className: 'shef-ann-wrap', closeIcon: false, closeByEsc: !k.strict, autoHide: false,
 		overlay: {backgroundColor: '#1f2433', opacity: 45},
 		events: {onPopupClose: function(){ popup.destroy(); }, onPopupDestroy: function(){ onDone(); }}
 	});
@@ -424,10 +818,11 @@ function cosmos(onDone){
 		var el = e.target.closest ? e.target.closest('[data-act]') : null;
 		var act = el && el.getAttribute('data-act');
 		if(act === 'link') { window.open(a.url, '_blank', 'noopener'); }
+		if(act === 'link' || act === 'ok') { seen(true); }
 		if(act) { popup.close(); }
 	});
 	popup.show();
-	seen();
+	seen(false);
 }
 function slides(onDone){
 	BX.Runtime.loadExtension('ui.dialogs.whats-new').then(function(ex){
@@ -442,7 +837,7 @@ function slides(onDone){
 			events: {onDestroy: onDone}
 		});
 		w.show();
-		seen();
+		seen(true);
 	}, onDone);
 }
 function show(onDone){ (P.layout === 'slides' ? slides : cosmos)(onDone || function(){}); }

@@ -110,6 +110,7 @@ $show = static function(string $page, bool $ajax = false, array $params = []): i
 Check::same('страница CRM, тестовый — окно', $show('/crm/deal/'), 1);
 Check::same('окно с объявлением модуля', str_contains(Asset::$strings[0], 'ИИ в звонках'), true);
 Check::same('не CRM — ничего', $show('/company/'), 0);
+Check::same('админка — ничего', $show('/bitrix/admin/'), 0);
 Check::same('ajax — ничего', $show('/crm/deal/', true), 0);
 Check::same('слайдер — ничего', $show('/crm/deal/', false, ['IFRAME' => 'Y']), 0);
 $GLOBALS['USER']->id = 7;
@@ -121,5 +122,19 @@ EventManager::$handlers['shef.toolsaiannounce']['OnAnnouncementsCollect'] = ['sh
 \CUserOptions::$values = [];
 Cache::$store = [];
 Check::same('сбой — CRM не ломается', $show('/crm/deal/'), 0);
+
+Check::group('где показывать');
+EventManager::$handlers = [];
+Option::set(Constants::MODULE_ID, Constants::OPTION_LIST, (string)json_encode([$ann('ai-view', 'Вид ИИ', ['audience' => 'test', 'places' => ['/shef/toolsai/view/?type=2&category=0']])]));
+Cache::$store = [];
+\CUserOptions::$values = [];
+Context::$uri = '/shef/toolsai/view/?category=0&type=2&x=1';
+Check::same('свой адрес с параметрами — окно', $show('/shef/toolsai/view/index.php'), 1);
+Context::$uri = '/shef/toolsai/view/?type=3';
+Check::same('другие параметры — ничего', $show('/shef/toolsai/view/index.php'), 0);
+Context::$uri = '/crm/deal/';
+Check::same('CRM — ничего (место другое)', $show('/crm/deal/index.php'), 0);
+Context::$uri = '';
+Check::same('дата публикации записана в журнал первого появления', isset(json_decode((string)Option::get(Constants::MODULE_ID, Constants::OPTION_FIRST_SEEN, ''), true)['ai-view']), true);
 
 Check::finish();
