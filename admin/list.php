@@ -1,7 +1,10 @@
 <?php declare(strict_types=1);
 
 /**
- * «Оповещения для сотрудников» — список объявлений.
+ * «[SH] Оповещения для сотрудников» — список объявлений.
+ *
+ * Оформление — штатные UI ядра (ui.alerts, ui.buttons, ui.forms, ui.label,
+ * ui.hint), как страницы shef.toolsai; подписи и цвета бейджей — ListView::row().
  *
  * Открывается через /bitrix/admin/shef_toolsaiannounce_list.php — заглушку в
  * одну строку, которую пишет Main\AdminPage (каталог модуля браузеру
@@ -24,8 +27,10 @@
 use Bitrix\Main\Config\Option;
 use Bitrix\Main\Context;
 use Bitrix\Main\Loader;
+use Bitrix\Main\UI\Extension;
 use Shef\ToolsAiAnnounce\Announce\Announcements;
 use Shef\ToolsAiAnnounce\Announce\Collector;
+use Shef\ToolsAiAnnounce\Announce\ListView;
 use Shef\ToolsAiAnnounce\Announce\SeenStore;
 use Shef\ToolsAiAnnounce\Main\Constants;
 
@@ -47,7 +52,7 @@ if(!Loader::includeModule('shef.toolsaiannounce'))
 $right = $APPLICATION->GetGroupRight(Constants::MODULE_ID);
 if($right < 'R')
 {
-	$APPLICATION->AuthForm('Нет доступа к «Оповещениям для сотрудников».');
+	$APPLICATION->AuthForm('Нет доступа к странице «'.Constants::TITLE.'».');
 }
 $canEdit = $right >= 'W';
 
@@ -141,55 +146,93 @@ $doneText = [
 	'full' => 'Не сохранено: в своём списке не больше '.Announcements::MAX_ITEMS.' объявлений.',
 ][(string)$request->getQuery('annDone')] ?? '';
 
-$APPLICATION->SetTitle('Оповещения для сотрудников');
+$APPLICATION->SetTitle(Constants::TITLE);
+Extension::load(['ui.alerts', 'ui.buttons', 'ui.forms', 'ui.label', 'ui.hint']);
+$badge = static fn(array $b): string => '<span class="ui-label ui-label-sm ui-label-fill '.$h($b['class']).'"><span class="ui-label-inner">'.$h($b['text']).'</span></span>';
+$testUsers = implode(', ', Announcements::testUsers((string)Option::get(Constants::MODULE_ID, Constants::OPTION_TEST_USERS, '1'))) ?: 'никого';
 require $_SERVER['DOCUMENT_ROOT'].'/bitrix/modules/main/include/prolog_admin_after.php';
 ?>
-<p style="max-width:900px">Объявление показывается сотруднику <b>один раз</b> при открытии CRM — окном с текстом и ссылкой. Сначала проверьте на тестовых пользователях, потом переключите аудиторию на «все сотрудники». Новое объявление — новый показ всем; правка текста уже видевшим не покажется снова.</p>
-<p style="max-width:900px">Объявления модулей приходят сами (событие <code>OnAnnouncementsCollect</code>). Чтобы изменить или выключить такое объявление, нажмите «Изменить» и сохраните — ваша копия заменит модульную. Тестовые пользователи — в <a href="/bitrix/admin/settings.php?mid=<?=$h(Constants::MODULE_ID)?>&amp;lang=<?=$h(LANGUAGE_ID)?>">настройках модуля</a>: сейчас <?=$h(implode(', ', Announcements::testUsers((string)Option::get(Constants::MODULE_ID, Constants::OPTION_TEST_USERS, '1'))) ?: 'никого')?>.</p>
-<?php if($doneText !== ''): ?><p style="color:#2e7d32"><?=$h($doneText)?></p><?php endif; ?>
-<?php if($merged['conflicts'] !== []): ?>
-	<?php \CAdminMessage::ShowMessage(['TYPE' => 'ERROR', 'MESSAGE' => 'Конфликты объявлений', 'DETAILS' => implode('<br>', array_map($h, $merged['conflicts'])), 'HTML' => true]); ?>
-<?php endif; ?>
-<table class="adm-list-table" style="max-width:1000px">
-	<tr class="adm-list-table-header">
-		<td class="adm-list-table-cell"><div class="adm-list-table-cell-inner">Объявление</div></td>
-		<td class="adm-list-table-cell"><div class="adm-list-table-cell-inner">Откуда</div></td>
-		<td class="adm-list-table-cell"><div class="adm-list-table-cell-inner">Кому</div></td>
-		<td class="adm-list-table-cell"><div class="adm-list-table-cell-inner">Показ</div></td>
-		<td class="adm-list-table-cell"><div class="adm-list-table-cell-inner"></div></td>
-	</tr>
-	<?php foreach($items as $item): ?>
-		<?php $fromSettings = $item['source'] === Announcements::SOURCE_SETTINGS; ?>
-		<tr class="adm-list-table-row">
-			<td class="adm-list-table-cell"><b><?=$h($item['title'])?></b><span style="display:block;color:#828b95"><?=$h($item['id'])?></span></td>
-			<td class="adm-list-table-cell"><?=$fromSettings ? (isset($item['overrides']) ? 'настройки (вместо '.$h($item['overrides']).')' : 'настройки') : $h($item['source'])?></td>
-			<td class="adm-list-table-cell"><?=$h(Announcements::AUDIENCES[$item['audience']])?>, <?=$h(Announcements::LAYOUTS[$item['layout']])?></td>
-			<td class="adm-list-table-cell"><?=$item['active'] ? 'включён' : 'выключен'?></td>
-			<td class="adm-list-table-cell" style="white-space:nowrap">
-				<?php if($canEdit): ?><a class="adm-btn" href="<?=$h($self.'&annEdit='.rawurlencode($item['id']).'#announce-form')?>">Изменить</a><?php endif; ?>
-				<form method="post" action="<?=$h($self)?>" style="display:inline"><?=bitrix_sessid_post()?><input type="hidden" name="announce" value="again"><input type="hidden" name="id" value="<?=$h($item['id'])?>"><input type="submit" class="adm-btn" value="Показать мне снова"></form>
-				<?php if($canEdit && $fromSettings): ?>
-					<form method="post" action="<?=$h($self)?>" style="display:inline" onsubmit="return confirm('<?=isset($item['overrides']) ? 'Вернуть объявление как в модуле?' : 'Удалить объявление?'?>');"><?=bitrix_sessid_post()?><input type="hidden" name="announce" value="delete"><input type="hidden" name="id" value="<?=$h($item['id'])?>"><input type="submit" class="adm-btn" value="<?=isset($item['overrides']) ? 'Вернуть как в модуле' : '✕'?>"></form>
-				<?php endif; ?>
-			</td>
-		</tr>
-	<?php endforeach; ?>
-	<?php if($items === []): ?><tr class="adm-list-table-row"><td class="adm-list-table-cell" colspan="5">Объявлений нет.</td></tr><?php endif; ?>
-</table>
+<style>
+.shef-ann{max-width:1000px}
+.shef-ann-card{background:#fff;border:1px solid #e6e9ec;border-radius:12px;padding:20px 24px;margin:0 0 20px}
+.shef-ann-card h3{margin:0 0 14px;font-size:17px;font-weight:600;color:#333}
+.shef-ann-list{width:100%;border-collapse:collapse}
+.shef-ann-list th{text-align:left;font-weight:500;color:#828b95;font-size:12px;padding:8px 10px;border-bottom:1px solid #e6e9ec}
+.shef-ann-list td{padding:12px 10px;border-bottom:1px solid #f1f3f5;vertical-align:top}
+.shef-ann-list tr:last-child td{border-bottom:0}
+.shef-ann-list .ui-label{margin:0 4px 4px 0}
+.shef-ann-id{display:block;color:#a8adb4;font-size:12px;margin-top:2px}
+.shef-ann-actions{white-space:nowrap;text-align:right}
+.shef-ann-actions form{display:inline}
+.shef-ann-actions .ui-btn{margin:0 0 4px 4px}
+.shef-ann .ui-form-row{margin-bottom:12px}
+</style>
+<div class="shef-ann">
+	<div class="ui-alert ui-alert-primary ui-alert-icon-info">
+		<span class="ui-alert-message">Объявление показывается сотруднику <b>один раз</b> при открытии CRM — окном с текстом и ссылкой. Сначала проверьте на тестовых пользователях, потом переключите аудиторию на «все сотрудники». Новое объявление — новый показ всем; правка текста уже видевшим не покажется снова.</span>
+	</div>
+	<div class="ui-alert ui-alert-default">
+		<span class="ui-alert-message">Объявления модулей приходят сами (событие <code>OnAnnouncementsCollect</code>). Чтобы изменить или выключить такое объявление, нажмите «Изменить» и сохраните — ваша копия заменит модульную. Тестовые пользователи — в <a href="/bitrix/admin/settings.php?mid=<?=$h(Constants::MODULE_ID)?>&amp;lang=<?=$h(LANGUAGE_ID)?>">настройках модуля</a>: сейчас <?=$h($testUsers)?>.</span>
+	</div>
+	<?php if($doneText !== ''): ?>
+		<div class="ui-alert <?=in_array((string)$request->getQuery('annDone'), ['denied', 'invalid', 'full'], true) ? 'ui-alert-danger' : 'ui-alert-success'?>"><span class="ui-alert-message"><?=$h($doneText)?></span></div>
+	<?php endif; ?>
+	<?php if($merged['conflicts'] !== []): ?>
+		<div class="ui-alert ui-alert-warning ui-alert-icon-warning"><span class="ui-alert-message"><b>Конфликты объявлений</b><br><?=implode('<br>', array_map($h, $merged['conflicts']))?></span></div>
+	<?php endif; ?>
+
+	<div class="shef-ann-card">
+		<h3>Объявления</h3>
+		<table class="shef-ann-list">
+			<tr><th>Объявление</th><th>Откуда</th><th>Кому</th><th>Показ</th><th></th></tr>
+			<?php foreach($items as $item): ?>
+				<?php $row = ListView::row($item, $canEdit); ?>
+				<tr>
+					<td><b><?=$h($row['title'])?></b><span class="shef-ann-id"><?=$h($row['id'])?></span></td>
+					<td><?=$badge($row['source'])?></td>
+					<td><?=$badge($row['audience'])?><?=$badge($row['layout'])?></td>
+					<td><?=$badge($row['active'])?></td>
+					<td class="shef-ann-actions">
+						<?php if($row['canEdit']): ?><a class="ui-btn ui-btn-xs ui-btn-light-border" href="<?=$h($self.'&annEdit='.rawurlencode($row['id']).'#announce-form')?>">Изменить</a><?php endif; ?>
+						<form method="post" action="<?=$h($self)?>"><?=bitrix_sessid_post()?><input type="hidden" name="announce" value="again"><input type="hidden" name="id" value="<?=$h($row['id'])?>"><button type="submit" class="ui-btn ui-btn-xs ui-btn-light-border" data-hint="Снять у себя отметку «видел»: окно покажется при следующем открытии CRM" data-hint-no-icon>Показать мне снова</button></form>
+						<?php if($row['delete'] !== null): ?>
+							<form method="post" action="<?=$h($self)?>" data-confirm="<?=$h($row['delete']['confirm'])?>" onsubmit="return confirm(this.getAttribute('data-confirm'));"><?=bitrix_sessid_post()?><input type="hidden" name="announce" value="delete"><input type="hidden" name="id" value="<?=$h($row['id'])?>"><button type="submit" class="ui-btn ui-btn-xs ui-btn-danger-light"><?=$h($row['delete']['button'])?></button></form>
+						<?php endif; ?>
+					</td>
+				</tr>
+			<?php endforeach; ?>
+			<?php if($items === []): ?><tr><td colspan="5" style="color:#828b95">Объявлений нет.</td></tr><?php endif; ?>
+		</table>
+	</div>
+
 <?php if($canEdit): ?>
 <?php $e = $edit ?? ['id' => '', 'title' => '', 'text' => '', 'url' => Announcements::DEFAULT_URL, 'linkText' => 'Подробнее в базе знаний', 'audience' => Announcements::AUDIENCE_TEST, 'active' => true, 'layout' => Announcements::LAYOUT_COSMOS]; ?>
-<h3 id="announce-form" style="margin:20px 0 8px"><?=$edit !== null ? 'Изменить объявление' : 'Новое объявление'?></h3>
-<form method="post" action="<?=$h($self)?>" style="display:grid;gap:8px;max-width:700px">
-	<?=bitrix_sessid_post()?><input type="hidden" name="announce" value="save"><input type="hidden" name="id" value="<?=$h($e['id'])?>">
-	<input type="text" name="title" maxlength="120" required placeholder="Заголовок" value="<?=$h($e['title'])?>">
-	<textarea name="text" rows="6" maxlength="2000" placeholder="Текст. Строка с «• » в начале — пункт списка."><?=$h($e['text'])?></textarea>
-	<input type="url" name="url" placeholder="https://… — ссылка на подробности (можно пусто)" value="<?=$h($e['url'])?>">
-	<input type="text" name="linkText" maxlength="60" placeholder="Текст кнопки" value="<?=$h($e['linkText'])?>">
-	<label>Кому: <select name="audience"><?php foreach(Announcements::AUDIENCES as $code => $title): ?><option value="<?=$h($code)?>"<?=$e['audience'] === $code ? ' selected' : ''?>><?=$h($title)?></option><?php endforeach; ?></select></label>
-	<label>Вид: <select name="layout"><?php foreach(Announcements::LAYOUTS as $code => $title): ?><option value="<?=$h($code)?>"<?=$e['layout'] === $code ? ' selected' : ''?>><?=$h($title)?></option><?php endforeach; ?></select></label>
-	<label><input type="checkbox" name="active" value="Y"<?=$e['active'] ? ' checked' : ''?>> показывать</label>
-	<div><input type="submit" class="adm-btn-save" value="Сохранить"><?php if($edit !== null): ?> <a class="adm-btn" href="<?=$h($self)?>">Отмена</a><?php endif; ?></div>
-</form>
+	<div class="shef-ann-card" id="announce-form">
+		<h3><?=$edit !== null ? 'Изменить объявление' : 'Новое объявление'?></h3>
+		<form method="post" action="<?=$h($self)?>" class="ui-form" style="max-width:700px">
+			<?=bitrix_sessid_post()?><input type="hidden" name="announce" value="save"><input type="hidden" name="id" value="<?=$h($e['id'])?>">
+			<div class="ui-form-row"><div class="ui-form-label"><div class="ui-ctl-label-text">Заголовок</div></div>
+				<div class="ui-form-content"><div class="ui-ctl ui-ctl-textbox ui-ctl-w100"><input type="text" class="ui-ctl-element" name="title" maxlength="120" required value="<?=$h($e['title'])?>"></div></div></div>
+			<div class="ui-form-row"><div class="ui-form-label"><div class="ui-ctl-label-text">Текст</div></div>
+				<div class="ui-form-content"><div class="ui-ctl ui-ctl-textarea ui-ctl-w100 ui-ctl-resize-y"><textarea class="ui-ctl-element" name="text" rows="6" maxlength="2000" placeholder="Строка с «• » в начале — пункт списка."><?=$h($e['text'])?></textarea></div></div></div>
+			<div class="ui-form-row"><div class="ui-form-label"><div class="ui-ctl-label-text">Ссылка на подробности (можно пусто)</div></div>
+				<div class="ui-form-content"><div class="ui-ctl ui-ctl-textbox ui-ctl-w100"><input type="url" class="ui-ctl-element" name="url" placeholder="https://…" value="<?=$h($e['url'])?>"></div></div></div>
+			<div class="ui-form-row"><div class="ui-form-label"><div class="ui-ctl-label-text">Текст кнопки</div></div>
+				<div class="ui-form-content"><div class="ui-ctl ui-ctl-textbox ui-ctl-w100"><input type="text" class="ui-ctl-element" name="linkText" maxlength="60" value="<?=$h($e['linkText'])?>"></div></div></div>
+			<div class="ui-form-row"><div class="ui-form-label"><div class="ui-ctl-label-text">Кому</div></div>
+				<div class="ui-form-content"><div class="ui-ctl ui-ctl-after-icon ui-ctl-dropdown ui-ctl-w100"><div class="ui-ctl-after ui-ctl-icon-angle"></div><select class="ui-ctl-element" name="audience"><?php foreach(Announcements::AUDIENCES as $code => $title): ?><option value="<?=$h($code)?>"<?=$e['audience'] === $code ? ' selected' : ''?>><?=$h($title)?></option><?php endforeach; ?></select></div></div></div>
+			<div class="ui-form-row"><div class="ui-form-label"><div class="ui-ctl-label-text">Вид окна</div></div>
+				<div class="ui-form-content"><div class="ui-ctl ui-ctl-after-icon ui-ctl-dropdown ui-ctl-w100"><div class="ui-ctl-after ui-ctl-icon-angle"></div><select class="ui-ctl-element" name="layout"><?php foreach(Announcements::LAYOUTS as $code => $title): ?><option value="<?=$h($code)?>"<?=$e['layout'] === $code ? ' selected' : ''?>><?=$h($title)?></option><?php endforeach; ?></select></div></div></div>
+			<div class="ui-form-row"><div class="ui-form-content">
+				<label class="ui-ctl ui-ctl-checkbox"><input type="checkbox" class="ui-ctl-element" name="active" value="Y"<?=$e['active'] ? ' checked' : ''?>><div class="ui-ctl-label-text">Показывать сотрудникам</div></label></div></div>
+			<div>
+				<button type="submit" class="ui-btn ui-btn-primary">Сохранить</button>
+				<?php if($edit !== null): ?><a class="ui-btn ui-btn-link" href="<?=$h($self)?>">Отмена</a><?php endif; ?>
+			</div>
+		</form>
+	</div>
 <?php endif; ?>
+</div>
+<script>BX.ready(function(){ if(BX.UI && BX.UI.Hint) { BX.UI.Hint.init(document.querySelector('.shef-ann')); } });</script>
 <?php
 require $_SERVER['DOCUMENT_ROOT'].'/bitrix/modules/main/include/epilog_admin.php';

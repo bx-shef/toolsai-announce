@@ -1,7 +1,7 @@
 <?php declare(strict_types=1);
 
 /**
- * Пункт «Оповещения для сотрудников» в меню административной части
+ * Пункт «[SH] Оповещения для сотрудников» в меню административной части
  * (Настройки). Ядро подключает этот файл само — для каждого установленного
  * модуля, при построении меню; регистрировать и копировать его не нужно.
  *
@@ -21,8 +21,11 @@ if(!is_object($APPLICATION) || $APPLICATION->GetGroupRight('shef.toolsaiannounce
 return [
 	'parent_menu' => 'global_menu_settings',
 	'section' => 'shef_toolsaiannounce',
-	'sort' => 1750,
-	'text' => 'Оповещения для сотрудников',
+	// Сразу под «Избранное»: у него sort 50, у «Пользователей» 100
+	// (main/admin/menu.php). CAdminMenu::_sort (main/interface/admin_lib.php)
+	// сортирует по sort, при равенстве порядок не гарантирован — поэтому 60.
+	'sort' => 60,
+	'text' => '[SH] Оповещения для сотрудников',
 	'title' => 'Объявления, которые сотрудник видит один раз при открытии CRM',
 	'url' => 'shef_toolsaiannounce_list.php?lang='.LANGUAGE_ID,
 	'icon' => 'sys_menu_icon',

@@ -10,6 +10,9 @@ namespace Shef\ToolsAiAnnounce\Main;
  */
 final class Constants
 {
+	/** Название страницы, пункта меню и блока настроек (префикс [SH] — модули линейки). */
+	public const TITLE = '[SH] Оповещения для сотрудников';
+
 	/** Идентификатор модуля. */
 	public const MODULE_ID = 'shef.toolsaiannounce';
 
