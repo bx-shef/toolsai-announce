@@ -1,7 +1,7 @@
 <?php declare(strict_types=1);
 
 /**
- * Отметки «видел» (SeenStore) вместе с отметками shef.toolsai, действие
+ * Отметки «видел» (SeenStore) — только свои, действие
  * shef:toolsaiannounce.banner.seen (Controller\Banner) и подписки установщика
  * при повторной установке и удалении — на заглушках ядра.
  */
@@ -26,10 +26,8 @@ Check::same('mark: без повторов, свежее в конце', SeenSto
 SeenStore::forget(3, 'b');
 Check::same('forget снимает', SeenStore::get(3), ['a']);
 Check::same('другой пользователь не затронут', SeenStore::get(4), []);
-\CUserOptions::SetOption(Constants::LEGACY_MODULE_ID, Constants::SEEN_OPTION, ['old', 'a'], false, 3);
-Check::same('отметки shef.toolsai читаются вместе со своими', SeenStore::get(3), ['old', 'a']);
-SeenStore::forget(3, 'old');
-Check::same('forget снимает и в shef.toolsai', [SeenStore::get(3), \CUserOptions::GetOption(Constants::LEGACY_MODULE_ID, Constants::SEEN_OPTION, [], 3)], [['a'], ['a']]);
+\CUserOptions::SetOption('shef.toolsai', Constants::SEEN_OPTION, ['old'], false, 3);
+Check::same('отметки shef.toolsai больше не читаются', SeenStore::get(3), ['a']);
 \CUserOptions::SetOption(Constants::MODULE_ID, Constants::SEEN_OPTION, 'мусор', false, 5);
 Check::same('мусор в настройке — пусто', SeenStore::get(5), []);
 
@@ -65,12 +63,7 @@ $module = new shef_toolsaiannounce();
 EventManager::$registered = [];
 $module->InstallEvents();
 $module->InstallEvents();
-$legacy = ['main', 'OnEpilog', 'shef.toolsai', 'Shef\\ToolsAi\\Announce\\Events', 'onEpilog'];
-$legacySlash = ['main', 'OnEpilog', 'shef.toolsai', '\\Shef\\ToolsAi\\Announce\\Events', 'onEpilog'];
-Check::same('снят старый обработчик shef.toolsai (оба написания)', [in_array($legacy, EventManager::$unregistered, true), in_array($legacySlash, EventManager::$unregistered, true)], [true, true]);
-EventManager::$registered[] = $legacy;
-$module->InstallEvents();
-Check::same('старая подписка shef.toolsai пропадает при установке', in_array($legacy, EventManager::$registered, true), false);
+Check::same('чужие подписки shef.toolsai установка не снимает', array_filter(EventManager::$unregistered, static fn(array $v): bool => $v[2] === 'shef.toolsai'), []);
 Check::same('повторная установка — одна регистрация', count(EventManager::$registered), 1);
 Check::same('регистрируется OnEpilog модуля', array_slice(EventManager::$registered[0], 0, 3), ['main', 'OnEpilog', Constants::MODULE_ID]);
 $module->UnInstallEvents();

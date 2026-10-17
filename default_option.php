@@ -10,8 +10,7 @@
  * старое «ID через запятую» тоже читается и при показе страницы
  * настроек переводится в JSON (Main\TestUsersOption).
  *
- * Коды те же, что были в shef.toolsai до выноса: установщик переносит
- * значения оттуда (Main\Migration).
+ * Коды те же, что были в shef.toolsai до выноса (данные перенесены до 1.2.0).
  */
 $shef_toolsaiannounce_default_option = [
 	'ANNOUNCE_list' => '',
