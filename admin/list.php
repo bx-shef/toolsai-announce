@@ -29,6 +29,7 @@ use Bitrix\Main\Loader;
 use Bitrix\Main\UI\Extension;
 use Bitrix\Main\UserTable;
 use Shef\ToolsAiAnnounce\Announce\Announcements;
+use Shef\ToolsAiAnnounce\Announce\Art;
 use Shef\ToolsAiAnnounce\Announce\Collector;
 use Shef\ToolsAiAnnounce\Announce\ListView;
 use Shef\ToolsAiAnnounce\Announce\Media;
@@ -142,12 +143,13 @@ BX.ready(function(){
 		placeEntity: <?=$json(Constants::PLACE_ENTITY)?>,
 		audiences: <?=$json(Announcements::AUDIENCES)?>,
 		layouts: <?=$json(Announcements::LAYOUTS)?>,
+		arts: <?=$json(Art::ARTS)?>,
 		repeats: <?=$json(Announcements::REPEATS)?>,
 		colors: <?=$json(Announcements::BUTTON_COLORS)?>,
 		maxImage: <?=(int)Media::MAX_IMAGE_SIZE?>,
 		empty: {id: '', title: '', text: '', url: <?=$json(Announcements::DEFAULT_URL)?>, linkText: 'Подробнее в базе знаний', audience: 'test', active: true,
 			layout: 'cosmos', places: [<?=$json(Places::DEFAULT)?>], users: [], departments: [], dateFrom: '', dateTo: '', sort: <?=(int)Announcements::DEFAULT_SORT?>,
-			repeat: 'once', repeatDays: 7, buttonColor: 'violet', image: 0, video: '', showToNew: false}
+			repeat: 'once', repeatDays: 7, buttonColor: 'violet', image: 0, art: '', video: '', showToNew: false}
 	};
 	var page = document.getElementById('shef-ann');
 	var tbody = document.getElementById('shef-ann-rows');
@@ -252,6 +254,7 @@ BX.ready(function(){
 		var f = {
 			title: input('text', v.title, {maxlength: 120}),
 			layout: select(D.layouts, v.layout),
+			art: select(D.arts, v.art || ''),
 			video: input('url', v.video, {placeholder: 'https://youtu.be/…, https://rutube.ru/video/…, https://vkvideo.ru/video-…'}),
 			url: input('url', v.url, {placeholder: 'https://…'}),
 			linkText: input('text', v.linkText, {maxlength: 60}),
@@ -312,6 +315,7 @@ BX.ready(function(){
 			field('Текст', text),
 			two(field('Вид', f.layout, '«Важное» закрывается только кнопкой, без крестика и Esc. «Слайды «Что нового»» — все подходящие объявления этого вида листаются в одном окне.'), field('Цвет главной кнопки', f.buttonColor)),
 			rVideo,
+			field('Картинка', f.art, '«По виду окна»: новинка, колокольчик для важного, знак для предупреждения, кубок для поздравления. Стройка, собрание и библиотека — с анимацией.'),
 			field('Своя картинка (вместо стандартной)', imgWrap, 'jpg, png, webp или gif, до 2 МБ.'),
 			field('Ссылка на подробности (можно пусто)', f.url, 'Только https://. Открывается главной кнопкой окна.'),
 			field('Текст главной кнопки', f.linkText),
@@ -348,7 +352,7 @@ BX.ready(function(){
 		save.addEventListener('click', function(){
 			var who = people.getTags();
 			var fields = {
-				id: v.id, title: f.title.input.value, text: text.input.value, layout: f.layout.input.value, video: f.video.input.value,
+				id: v.id, title: f.title.input.value, text: text.input.value, layout: f.layout.input.value, art: f.art.input.value, video: f.video.input.value,
 				url: f.url.input.value, linkText: f.linkText.input.value, buttonColor: f.buttonColor.input.value, audience: f.audience.input.value,
 				dateFrom: f.dateFrom.input.value, dateTo: f.dateTo.input.value, repeat: f.repeat.input.value, repeatDays: f.repeatDays.input.value,
 				sort: f.sort.input.value, image: image, showToNew: f.showToNew.input.checked ? 'Y' : 'N', active: f.active.input.checked ? 'Y' : 'N',

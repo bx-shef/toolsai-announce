@@ -23,6 +23,7 @@
 | чистая логика: разбор, проверка формы, выбор (период, повтор, аудитория, новые сотрудники), слияние, окно | `lib/announce/announcements.php` |
 | «Где показывать»: адрес, совпадение, готовые места, поиск | `lib/announce/places.php` (чистая), сбор — `lib/announce/placecollector.php` |
 | видео (белый список хостов) и проверка картинки | `lib/announce/media.php` |
+| встроенные картинки окна (SVG, анимации; поле `art`, 1.5.0) | `lib/announce/art.php` |
 | события для модулей | `lib/public/event/onannouncementscollectevent.php`, `onannouncementplacescollectevent.php`; сбор — `lib/announce/collector.php` (`sendEach`, журнал `SYS_firstseen`) |
 | показ на странице (main:OnEpilog) | `lib/internals/integration/main/eventhandler/onepilogeventhandler.php` |
 | пункт в меню шестерёнки вида «ИИ» (shef.toolsai:OnViewSettingsMenuBuild, 1.4.1) | `lib/internals/integration/toolsai/eventhandler/onviewsettingsmenubuildeventhandler.php`; подписки после обновления копированием — `lib/main/maintenance.php` |
@@ -83,5 +84,6 @@
 | `settings_test.php` | зависимости, подписки установщика, удаление (savedata), контроллер, коды настроек |
 | `adminpage_test.php` | заглушка в /bitrix/admin: путь, своя/чужая |
 | `listview_test.php` | строки таблицы: бейджи, меню «…», места; название [SH], место пункта меню |
+| `art_test.php` | картинки окна: каждая своя, выбор по виду, поле art, SVG в данных окна |
 | `mcp_test.php` | манифест по праву, аудитория — спросить человека, REST: создать, изменить своё, выключить |
 | `autoload_test.php` | класс лежит там, где его ищет ядро |

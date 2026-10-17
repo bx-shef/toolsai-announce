@@ -32,7 +32,7 @@ final class McpTools
 	public const METHOD_DISABLE = 'shef.announce.disable';
 
 	/** Поля, которые правит ИИ; остальные (картинка, published, sort) — со страницы списка. */
-	public const FIELDS = ['title', 'text', 'url', 'linkText', 'layout', 'audience', 'users', 'departments', 'places', 'dateFrom', 'dateTo', 'repeat', 'repeatDays', 'buttonColor', 'video', 'showToNew'];
+	public const FIELDS = ['title', 'text', 'url', 'linkText', 'layout', 'audience', 'users', 'departments', 'places', 'dateFrom', 'dateTo', 'repeat', 'repeatDays', 'buttonColor', 'video', 'showToNew', 'art'];
 
 	/**
 	 * Манифест для сотрудника с правом модуля $right (D, R, W): без R — пусто,
@@ -111,6 +111,7 @@ final class McpTools
 			'repeatDays' => ['type' => 'integer', 'minimum' => 1, 'maximum' => 365, 'description' => 'Для repeat "days"'],
 			'buttonColor' => ['type' => 'string', 'enum' => array_keys(Announcements::BUTTON_COLORS)],
 			'video' => ['type' => 'string', 'description' => 'Для layout "video": https-ссылка YouTube, Rutube, VK Видео или /upload/….mp4'],
+			'art' => ['type' => 'string', 'enum' => array_keys(Art::ARTS), 'description' => 'Картинка окна: '.static::labels(Art::ARTS).'. Пусто — по виду окна; build, meeting, library — с анимацией'],
 			'showToNew' => ['type' => 'boolean', 'description' => 'Показывать сотрудникам, пришедшим после публикации'],
 		];
 	}
