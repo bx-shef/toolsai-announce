@@ -45,4 +45,6 @@ Composer (`bxshef/toolsai-announce`, тип `bitrix-module`, каталог
 * [CHANGELOG.md](CHANGELOG.md) — версии.
 * [CONTRIBUTING.md](CONTRIBUTING.md) — как ведётся репозиторий.
 
-Лицензия — MIT.
+Модуль бесплатный и в лицензию shef.toolsai («Звонки, сделки и отчёты») не входит — как и остальные модули-соседи shef.toolsaiassistant, shef.toolsaiannounce, shef.toolsaikb. Отдельно платный в линейке — только MCP-сервер toolsai-mcp. От shef.toolsai модуль не зависит.
+
+Лицензия кода — MIT.
